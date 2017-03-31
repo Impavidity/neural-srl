@@ -120,7 +120,7 @@ class SimpleSRLNetwork(Configurable):
                           recur_loss,
                           covar_loss,
                           ortho_loss]
-    '''
+
     ops['train_op'] = [train_op,
                        train_output['loss'] + l2_loss + regularization_loss,
                        train_output['predictions'],
@@ -141,23 +141,8 @@ class SimpleSRLNetwork(Configurable):
                       test_output['n_correct'],
                       test_output['sequence_lengths']
                     ]
-    '''
-    ops['train_op'] = [train_op,
-                       train_output['loss'] + l2_loss + regularization_loss,
-                       train_output['crf_output'],
-                       train_output['n_tokens'],
-                       train_output['sequence_lengths']
-                       ]
-    ops['valid_op'] = [valid_output['loss'],
-                       valid_output['crf_output'],
-                       valid_output['n_tokens'],
-                       valid_output['sequence_lengths']
-                       ]
-    ops['test_op'] = [test_output['loss'],
-                      test_output['crf_output'],
-                      test_output['n_tokens'],
-                      test_output['sequence_lengths']
-                      ]
+
+
     ops['optimizer'] = optimizer
 
     return ops
@@ -172,26 +157,7 @@ class SimpleSRLNetwork(Configurable):
                 end=" ")
         print()
       print()
- #=======================================================================
-  def CRFDecode(self, crf_output, targets, sequence_lengths):
-    """"""
-    n_correct = 0
-    transition_params = crf_output["transition_params"]
-    unary_scores = crf_output["unary_scores"]
-    result = []
-    lengths = []
-    for score, sent, length in zip(unary_scores, targets, sequence_lengths):
-      viterbi_sequence = tf.contrib.crf.viterbi_decode(score[:length], transition_params)
-      n_correct += np.sum(np.equal(viterbi_sequence[0], sent[:length]))
-      result.append(viterbi_sequence[0])
-      lengths.append(len(sent[:length]))
 
-    output = {}
-    output["n_correct"] = n_correct
-    output["viterbi_sequence"] = result
-    output["n_tokens"] = lengths
-
-    return output
 #=============================================================================
 
   def train(self, sess):
@@ -218,17 +184,7 @@ class SimpleSRLNetwork(Configurable):
           train_inputs = feed_dict[self._trainset.inputs]
           train_targets = feed_dict[self._trainset.targets]
           #self.debug(_sent, train_inputs, train_targets)
-          #_, loss, predictions, n_tokens, n_correct, sequence_lengths, prob= sess.run(self.ops['train_op'], feed_dict=feed_dict)
-
-          # Modify Here
-          _, loss, crf_output, n_tokens, sequence_lengths = sess.run(self.ops['train_op'], feed_dict=feed_dict)
-          decode_output = self.CRFDecode(crf_output, train_targets, sequence_lengths)
-          sequence = decode_output["viterbi_sequence"]
-          n_correct = 0
-          for pred, true, length in zip(sequence, train_targets, sequence_lengths):
-            n_correct += np.sum(np.equal(pred, true[:length]))
-          # End of Modify
-
+          _, loss, predictions, n_tokens, n_correct, sequence_lengths, prob= sess.run(self.ops['train_op'], feed_dict=feed_dict)
           train_loss += loss
           n_train_sents += len(train_targets)
           n_train_correct += n_correct
@@ -290,12 +246,7 @@ class SimpleSRLNetwork(Configurable):
     for (feed_dict, sents, _feas) in minibatches():
       mb_inputs = feed_dict[dataset.inputs]
       mb_targets = feed_dict[dataset.targets]
-      #loss, predictions, n_tokens, n_correct, sequence_lengths = sess.run(op, feed_dict=feed_dict)
-      loss, crf_output, n_tokens, sequence_lengths = sess.run(op, feed_dict=feed_dict)
-      decode_output = self.CRFDecode(crf_output, mb_targets, sequence_lengths)
-      sequence = decode_output["viterbi_sequence"]
-      predictions = sequence
-      # End of modify
+      loss, predictions, n_tokens, n_correct, sequence_lengths = sess.run(op, feed_dict=feed_dict)
       all_predictions.append(predictions)
       all_sents.append(sents)
       all_targets.append(mb_targets)

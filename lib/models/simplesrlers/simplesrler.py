@@ -32,51 +32,56 @@ class SimpleSrler(BaseSimpleSrlers):
         is_verb_inputs = vocabs[4].embedding_lookup(inputs[:, :, 4], moving_params=self.moving_params)
         #self.embed_concat()
         # top_recur = tf.concat(2, [word_inputs, pos_inputs, verb_inputs, is_verb_inputs]+ context)
-        top_recur = tf.concat(2, [word_inputs, pos_inputs, verb_inputs, is_verb_inputs])
+        ###################### Modify Here
+        # top_recur = tf.concat(2, [word_inputs, pos_inputs, verb_inputs, is_verb_inputs])
+        top_recur = tf.concat(2, [word_inputs, pos_inputs])
+        ###################### End of Modify
         for i in xrange(self.n_recur):
           with tf.variable_scope('RNN%d' % i, reuse=reuse):
             top_recur, _ = self.RNN(top_recur)
 
+        ##################### Modify Here
+        top_recur = tf.concat(2, [top_recur, verb_inputs, is_verb_inputs])
+        for i in xrange(self.n_srl_recur):
+          with tf.variable_scope('SRLRNN%d' % i, reuse=reuse):
+            top_recur, _ = self.RNN(top_recur)
+            ##################### End of Modify
 
+        predicate_token = tf.to_int32(tf.equal(inputs[:, :, 4], vocabs[4]['1']))
 
         # Mask predicate hidden representation out
-        predicate_h = tf.mul(top_recur, tf.to_float(tf.expand_dims(inputs[:,:,4], 2)))
-        #print(predicate_h.get_shape().as_list())
+        predicate_h = tf.mul(top_recur, tf.to_float(tf.expand_dims(predicate_token, 2)))
+        # print(predicate_h.get_shape().as_list())
         # Reduce dimension
         predicate_h = tf.reduce_sum(predicate_h, axis=1)
-        #print(predicate_h.get_shape().as_list())
+        # print(predicate_h.get_shape().as_list())
         # Broadcasting
         predicate_h = tf.mul(tf.expand_dims(predicate_h, 1), self.tokens_to_keep3D)
-        #print(predicate_h.get_shape().as_list())
+        # print(predicate_h.get_shape().as_list())
         # Concat
-        classifier_input = tf.concat(2,[predicate_h, top_recur])
+        classifier_input = tf.concat(2, [predicate_h, top_recur])
 
         # Mask predicate embedding out
-        predicate_em = tf.mul(verb_inputs, tf.to_float(tf.expand_dims(inputs[:,:,4], 2)))
+        predicate_em = tf.mul(verb_inputs, tf.to_float(tf.expand_dims(predicate_token, 2)))
         # Reduce dimension
-        predicate_em = tf.reduce_sum(predicate_em, axis=1) # b x dim
+        predicate_em = tf.reduce_sum(predicate_em, axis=1)  # b x dim
         # b x dim -> b x r x dim
-        predicate_em = tf.pack([predicate_em]*len(vocabs[2]), axis=1)
+        predicate_em = tf.pack([predicate_em] * len(vocabs[2]), axis=1)
         # Role Representation
 
         role_em_list = vocabs[2].embedding_lookup(range(len(vocabs[2])), moving_params=self.moving_params)
         batch_list = tf.to_float(tf.greater(self.sequence_lengths, -1))
-        #print(batch_list.get_shape().as_list())
-        #batch_list = tf.pack([batch_list]*len(vocabs[2]), axis=1)
-        #print(batch_list.get_shape().as_list())
+        # print(batch_list.get_shape().as_list())
+        # batch_list = tf.pack([batch_list]*len(vocabs[2]), axis=1)
+        # print(batch_list.get_shape().as_list())
         role_em_list = tf.mul(tf.to_float(tf.expand_dims(batch_list, 2)), role_em_list)
         para_input = tf.concat(2, [predicate_em, role_em_list])
 
         with tf.variable_scope('SRLClassifier_para', reuse=reuse):
           para = self.MLP4SRLWeight(para_input)
-          #print(para_input.get_shape().as_list())
           result_dist = tf.batch_matmul(classifier_input, para, adj_y=True)
-          #print(classifier_input.get_shape().as_list())
-          #print(para.get_shape().as_list())
-          #print(result_dist.get_shape().as_list())
-          #srl_output = self.output(result_dist, targets)
-          with tf.variable_scope("CRF", reuse=reuse):
-              crf_output = self.CRF(result_dist, len(vocabs[2]), targets)
+          srl_output = self.output(result_dist, targets)
+
 
 
 
@@ -101,23 +106,23 @@ class SimpleSrler(BaseSimpleSrlers):
 
         #decode_output = self.CRFDecode(crf_output, targets[:,:,0])
 
-        # output = {}
-        # output["loss"] = srl_output["loss"]
-        # output["n_tokens"] = self.n_tokens
-        # output["predictions"] = srl_output['predictions']
-        # output["n_correct"] = srl_output["n_correct"]
-        # output["sequence_lengths"] = tf.reshape(tf.to_int64(self.sequence_lengths), [-1])
+        output = {}
+        output["loss"] = srl_output["loss"]
+        output["n_tokens"] = self.n_tokens
+        output["predictions"] = srl_output['predictions']
+        output["n_correct"] = srl_output["n_correct"]
+        output["sequence_lengths"] = tf.reshape(tf.to_int64(self.sequence_lengths), [-1])
         # output["prob"] = result_dist
-        # return output
+        return output
 
         # decode_output = self.CRFDecode(crf_output, targets[:,:,0])
-        output = {}
-        output["loss"] = crf_output["loss"]
-        output["n_tokens"] = self.n_tokens
-        output["crf_output"] = crf_output
-        output["sequence_lengths"] = tf.reshape(tf.to_int64(self.sequence_lengths), [-1])
+        # output = {}
+        # output["loss"] = crf_output["loss"]
+        # output["n_tokens"] = self.n_tokens
+        # output["crf_output"] = crf_output
+        # output["sequence_lengths"] = tf.reshape(tf.to_int64(self.sequence_lengths), [-1])
 
-        return output
+        # return output
 
 
 
