@@ -190,7 +190,7 @@ class ParserNetwork(Configurable):
       filename = self.valid_file
       minibatches = self.valid_minibatches
       dataset = self._validset
-      op = self.ops['validate_op']
+      op = self.ops['valid_op']
     elif not validate and not ood:
       filename = self.test_file
       minibatches = self.test_minibatches
@@ -296,18 +296,9 @@ class ParserNetwork(Configurable):
                        train_output['loss']+l2_loss+regularization_loss,
                        train_output['n_correct'],
                        train_output['n_tokens']]
-    ops['valid_op'] = [valid_output['n_correct'],
-                       valid_output['n_tokens'],
-                       valid_output['predictions'],
-                       valid_output['probabilities']]
-    ops['test_op'] = [test_output['n_correct'],
-                      test_output['n_tokens'],
-                      test_output['predictions'],
-                      test_output['probabilities']]
-    ops['ood_op'] = [ood_output['n_correct'],
-                      ood_output['n_tokens'],
-                      ood_output['predictions'],
-                      ood_output['probabilities']]
+    ops['valid_op'] = [valid_output['probabilities']]
+    ops['test_op'] = [test_output['probabilities']]
+    ops['ood_op'] = [ood_output['probabilities']]
     ops['optimizer'] = optimizer
 
     return ops
