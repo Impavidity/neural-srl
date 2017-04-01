@@ -85,8 +85,6 @@ if __name__ == '__main__':
 
       network.train(sess)
     else:
-      pass
-
       os.system('echo Testing: >> %s/HEAD' % network.save_dir)
       saver = tf.train.Saver(name=network.name)
       saver.restore(sess, tf.train.latest_checkpoint(network.save_dir, latest_filename=network.name.lower()))

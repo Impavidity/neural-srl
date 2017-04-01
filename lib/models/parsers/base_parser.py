@@ -93,4 +93,4 @@ class BaseParser(NN):
     return (0, 1, 2)
   @property
   def target_idxs(self):
-    return (3, 4, 5)
+    return (3, 4)

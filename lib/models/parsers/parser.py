@@ -56,14 +56,14 @@ class Parser(BaseParser):
     
     with tf.variable_scope('Parses', reuse=reuse):
       parse_logits = self.bilinear_classifier(dep_mlp, head_dep_mlp, add_bias1=True)
-      parse_output = self.output(parse_logits, targets[:,:,1])
+      parse_output = self.output(parse_logits, targets[:,:,0])
       if moving_params is None:
-        predictions = targets[:,:,1]
+        predictions = targets[:,:,0]
       else:
         predictions = parse_output['predictions']
     with tf.variable_scope('Rels', reuse=reuse):
       rel_logits, rel_logits_cond = self.conditional_bilinear_classifier(rel_mlp, head_rel_mlp, len(vocabs[2]), predictions)
-      rel_output = self.output(rel_logits, targets[:,:,2])
+      rel_output = self.output(rel_logits, targets[:,:,1])
       rel_output['probabilities'] = self.conditional_probabilities(rel_logits_cond)
     
     output = {}

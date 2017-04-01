@@ -281,6 +281,7 @@ class SimpleSRLNetwork(Configurable):
           all_sents.append([])
           all_feature.append([])
           all_targets.append([])
+          all_sequence_lengths.append([])
     p, r, f = self.model_calc(dataset, all_sequence_lengths, all_sents, all_feature, all_targets, all_predictions, self._vocabs, validate, ood)
     return p, r, f
 

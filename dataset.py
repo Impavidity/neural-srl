@@ -112,7 +112,16 @@ class Dataset(Configurable):
           buff[i][j] += tuple([is_verbs_index[j]]) # is_Verbs_index is same as is_verbs in this case
           buff[i][j] += tuple([verb, srl, verb_sense])
           #print(buff[i][j])
-
+    elif self.model_type == "Parser":
+      words, poss, rels = self.vocabs
+      for i, sent in enumerate(buff):
+        for j, token in enumerate(sent):
+          # Reformat the input file : word_id word ppos head deprel
+          word, pos, head, rel = token[words.conll_idx], token[poss.conll_idx], token[3], token[rels.conll_idx]
+          buff[i][j] = (word,) + words[word] + poss[pos] + (int(head),) + rels[rel]
+        sent.insert(0, ('root', Vocab.ROOT, Vocab.ROOT, 0 , Vocab.ROOT))
+    elif self.model_type == "MultiTask":
+      pass
     else:
       print("Unknown type In buff process")
     return buff
