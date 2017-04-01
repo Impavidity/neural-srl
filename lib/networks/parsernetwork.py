@@ -145,7 +145,7 @@ class ParserNetwork(Configurable):
           total_train_iters += 1
           if total_train_iters == 1 or total_train_iters % validate_every == 0:
             print("## Validation: %8d" % (int(total_train_iters / validate_every)))
-            uas, las = self.test(sess, validate=True)
+            uas, las = self.test(sess, validate=True, ood=False)
             print("## Validation uas: %f  las: %f" %(uas, las))
             if las > best_las:
               best_las = las
@@ -296,9 +296,9 @@ class ParserNetwork(Configurable):
                        train_output['loss']+l2_loss+regularization_loss,
                        train_output['n_correct'],
                        train_output['n_tokens']]
-    ops['valid_op'] = [valid_output['probabilities']]
-    ops['test_op'] = [test_output['probabilities']]
-    ops['ood_op'] = [ood_output['probabilities']]
+    ops['valid_op'] = valid_output['probabilities']
+    ops['test_op'] = test_output['probabilities']
+    ops['ood_op'] = ood_output['probabilities']
     ops['optimizer'] = optimizer
 
     return ops
