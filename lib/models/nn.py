@@ -283,6 +283,54 @@ class NN(Configurable):
     else:
       return linear
 
+  #==================================================================
+  def MultiUpdateMLP(self, inputs, n_splits=1):
+    """"""
+
+    n_dims = len(inputs.get_shape().as_list())
+    batch_size = tf.shape(inputs)[0]
+    bucket_size = tf.shape(inputs)[1]
+    input_size = inputs.get_shape().as_list()[-1]
+    output_size = self.mlp_size
+    output_shape = tf.pack([batch_size] + [bucket_size] * (n_dims - 2) + [output_size])
+    shape_to_set = [tf.Dimension(None)] * (n_dims - 1) + [tf.Dimension(output_size)]
+
+    if self.moving_params is None:
+      if self.drop_gradually:
+        s = self.global_sigmoid
+        keep_prob = s + (1 - s) * self.mlp_keep_prob
+      else:
+        keep_prob = self.mlp_keep_prob
+    else:
+      keep_prob = 1
+    if isinstance(keep_prob, tf.Tensor) or keep_prob < 1:
+      noise_shape = tf.pack([batch_size] + [1] * (n_dims - 2) + [input_size])
+      inputs = tf.nn.dropout(inputs, keep_prob, noise_shape=noise_shape)
+
+    linear = linalg.my_linear(inputs,
+                              output_size,
+                              n_splits=n_splits,
+                              add_bias=True,
+                              moving_params=self.moving_params)
+    if n_splits == 1:
+      linear = [linear]
+    for i, split in enumerate(linear):
+      split = self.mlp_func(split)
+      split.set_shape(shape_to_set)
+      linear[i] = split
+    if self.moving_params is None:
+      with tf.variable_scope('Linear', reuse=True):
+        matrix = tf.get_variable('Weights')
+        I = tf.diag(tf.ones([self.mlp_size]))
+        for W in tf.split(1, n_splits, matrix):
+          WTWmI = tf.matmul(W, W, transpose_a=True) - I
+          tf.add_to_collection('ortho_losses', tf.nn.l2_loss(WTWmI))
+      for split in linear:
+        tf.add_to_collection('covar_losses', self.covar_loss(split))
+    if n_splits == 1:
+      return linear[0]
+    else:
+      return linear
 
   #==================================================================
   def MLP4SRLWeight(self, inputs, n_splits=1):
