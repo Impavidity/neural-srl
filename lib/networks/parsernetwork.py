@@ -102,6 +102,16 @@ class ParserNetwork(Configurable):
                                           shuffle=False)
 
   #=============================================================
+
+  def ood_minibatches(self):
+    """"""
+
+    return self._oodset.get_minibatches(self.test_batch_size,
+                                          self.model.input_idxs,
+                                          self.model.target_idxs,
+                                          shuffle=False)
+
+  #=============================================================
   # assumes the sess has already been initialized
   def train(self, sess):
     """"""

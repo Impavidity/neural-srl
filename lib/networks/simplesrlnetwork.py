@@ -315,6 +315,7 @@ class SimpleSRLNetwork(Configurable):
         if not isinstance(fea[0], (int, long)):
           print("Is index Error which is not int")
           print(words)
+          print(feas)
           exit()
         tup = (
           i+1,
