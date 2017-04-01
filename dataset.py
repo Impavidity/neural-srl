@@ -120,7 +120,7 @@ class Dataset(Configurable):
         for j, token in enumerate(sent):
           word, pos, head, rel = token[words.conll_idx], token[poss.conll_idx], token[3], token[rels.conll_idx]
           buff[i][j] = (word,) + words[word] + poss[pos] + (int(head),) + rels[rel]
-        sent.insert(0, ('root', Vocab.ROOT, Vocab.ROOT, 0 , Vocab.ROOT))
+        sent.insert(0, ('root', Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, 0 , Vocab.ROOT))
     elif self.model_type == "MultiTask":
       pass
     else:
