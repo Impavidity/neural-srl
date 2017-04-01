@@ -46,6 +46,7 @@ class Bucket(Configurable):
     words = None
     idxs = None
     idxf = None
+
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       words = [word[0] for word in sent]
     elif self.model_type == "Parser":
@@ -53,13 +54,19 @@ class Bucket(Configurable):
     else:
       print("Unsupported Mode in Add Feature")
       exit()
+
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       idxs = [word[1:-4] for word in sent]
+    elif self.model_type == "Parser":
+      idxs = [word[1:] for word in sent]
     else:
       print("Unsupported Mode in Add Feature")
       exit()
+
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       idxf = [word[-4:] for word in sent]
+    elif self.model_type == "Parser":
+      idxf = None
     else:
       print("Unsupported Mode in Add Feature")
       exit()

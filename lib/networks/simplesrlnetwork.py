@@ -252,7 +252,7 @@ class SimpleSRLNetwork(Configurable):
       op = self.ops['test_op']
     elif not validate and ood:
       filename = self.ood_file
-      minibatches = self.test_minibatches
+      minibatches = self.ood_minibatches
       dataset = self._oodset
       op = self.ops['ood_op']
     else:
@@ -379,7 +379,14 @@ class SimpleSRLNetwork(Configurable):
                                          self.model.input_idxs,
                                          self.model.target_idxs,
                                          shuffle=False)
+  # =============================================================
+  def ood_minibatches(self):
+    """"""
 
+    return self._oodset.get_minibatches(self.test_batch_size,
+                                         self.model.input_idxs,
+                                         self.model.target_idxs,
+                                         shuffle=False)
   # =============================================================
 
   @property

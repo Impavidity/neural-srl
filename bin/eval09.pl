@@ -758,8 +758,8 @@ sub read_sent
 	 ($fields_g{pos} ne $fields_s{pos})))
     {
 	$word_mismatch_warning = 1;
-	print STDERR "Warning: ignoring word/pos mismatch, line $line_num:\n" ;
-	print STDERR " gold: $line_g sys : $line_s\n" ;
+	#print STDERR "Warning: ignoring word/pos mismatch, line $line_num:\n" ;
+	#print STDERR " gold: $line_g sys : $line_s\n" ;
 	# exit(1) ;
     }
 
