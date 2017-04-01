@@ -124,6 +124,23 @@ class Configurable(object):
   def save_dir(self):
     return self._config.get('OS', 'save_dir')
   argparser.add_argument('--save_dir')
+  @property
+  def source_train(self):
+    return self._config.get('OS', 'source_train')
+  argparser.add_argument('--source_train')
+  @property
+  def source_dev(self):
+    return self._config.get('OS', 'source_dev')
+  argparser.add_argument('--source_dev')
+  @property
+  def source_test(self):
+    return self._config.get('OS', 'source_test')
+  argparser.add_argument('--source_test')
+  @property
+  def source_ood(self):
+    return self._config.get('OS', 'source_ood')
+  argparser.add_argument('--source_ood')
+
   
   #=============================================================
   # [Dataset]

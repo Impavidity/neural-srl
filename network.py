@@ -86,6 +86,11 @@ class SimpleSRLNetwork(Configurable):
     self._validset = Dataset(self.valid_file, self._vocabs, model, self._config, name='Validset')
     self._testset = Dataset(self.test_file, self._vocabs, model, self._config, name='Testset')
     self._oodset = Dataset(self.ood_file, self._vocabs, model, self._config, name="OODset")
+    print("There are %d sentences in training set" % (self._trainset.sentsNum()))
+    print("There are %d sentences in validation set" % (self._validset.sentsNum()))
+    print("There are %d sentences in testing set" % (self._testset.sentsNum()))
+    print("There are %d sentences in ood set" % (self._oodset.sentsNum()))
+
 
     self._ops = self._gen_ops()
 
@@ -114,6 +119,7 @@ class SimpleSRLNetwork(Configurable):
     # These have to happen after optimizer.minimize is called
     valid_output = self._model(self._validset, moving_params=optimizer)
     test_output = self._model(self._testset, moving_params=optimizer)
+    ood_output = self._model(self._oodset, moving_params=optimizer)
     ops = {}
     ops['pretrain_op'] = [pretrain_op,
                           pretrain_loss,
@@ -127,7 +133,6 @@ class SimpleSRLNetwork(Configurable):
                        train_output['n_tokens'],
                        train_output['n_correct'],
                        train_output['sequence_lengths']
-                       #train_output['prob']
                        ]
     ops['valid_op'] = [valid_output['loss'],
                        valid_output['predictions'],
@@ -142,6 +147,13 @@ class SimpleSRLNetwork(Configurable):
                       test_output['sequence_lengths']
                     ]
 
+    ops['ood_op'] = [ood_output['loss'],
+                      ood_output['predictions'],
+                      ood_output['n_tokens'],
+                      ood_output['n_correct'],
+                      ood_output['sequence_lengths']
+                      ]
+
 
     ops['optimizer'] = optimizer
 
@@ -152,9 +164,6 @@ class SimpleSRLNetwork(Configurable):
       for word, fea, tar in zip(sent, feature, target):
         print(word, self.words[(fea[0], fea[1])], self.poss[fea[2]], self.verbs[fea[3]], self.is_verbs[fea[4]],
               self.srls[tar], end=" ")
-        for item in range(int(len(fea[5:]) / 2)):
-          print(fea[item * 2 + 5], fea[item * 2 + 5 + 1], self.words[(fea[item * 2 + 5], fea[item * 2 + 5 + 1])],
-                end=" ")
         print()
       print()
 
@@ -179,12 +188,15 @@ class SimpleSRLNetwork(Configurable):
       test_p = 0
       test_r = 0
       test_f = 0
+      ood_p = 0
+      ood_r = 0
+      ood_f = 0
       while True:
         for j, (feed_dict, _sent, _feas) in enumerate(self.train_minibatches()):
           train_inputs = feed_dict[self._trainset.inputs]
           train_targets = feed_dict[self._trainset.targets]
           #self.debug(_sent, train_inputs, train_targets)
-          _, loss, predictions, n_tokens, n_correct, sequence_lengths, prob= sess.run(self.ops['train_op'], feed_dict=feed_dict)
+          _, loss, predictions, n_tokens, n_correct, sequence_lengths = sess.run(self.ops['train_op'], feed_dict=feed_dict)
           train_loss += loss
           n_train_sents += len(train_targets)
           n_train_correct += n_correct
@@ -202,18 +214,22 @@ class SimpleSRLNetwork(Configurable):
             n_train_iters = 0
           if total_train_iters == 1 or total_train_iters % validate_every == 0:
             print("## Validation: %8d" % int(total_train_iters/validate_every))
-            p, r, f= self.test(sess, validate=True)
+            p, r, f= self.test(sess, validate=True, ood=False)
             if (f>best_f):
               best_f = f
               best_p = p
               best_r = r
               print("## Update the model")
-              print("## TEST")
               saver.save(sess, os.path.join(self.save_dir, self.name.lower() + '-trained'),
                            latest_filename=self.name.lower(), global_step=self.global_epoch)
-              test_p, test_r, test_f = self.test(sess, validate=False)
-            print("## Currently the best F %5.2f P %5.2f R %5.2f" %(best_f, best_p, best_r))
+              print("## TEST")
+              test_p, test_r, test_f = self.test(sess, validate=False, ood=False)
+              print("## OOD")
+              ood_p, ood_r, ood_f = self.test(sess, validate=False, ood=True)
+            print("## Currently the best:")
+            print("## The Validate set F %5.2f P %5.2f R %5.2f" %(best_f, best_p, best_r))
             print("## The Test set F %5.2f P %5.2f R %5.2f" % (test_f, test_p, test_r))
+            print("## The OOD set F %5.2f P %5.2f R %5.2f" % (ood_f, ood_p, ood_r))
         print("[epoch] ", sess.run(self._global_epoch.assign_add(1.)))
     except KeyboardInterrupt:
       try:
@@ -221,88 +237,122 @@ class SimpleSRLNetwork(Configurable):
       except:
         print('\r', end='')
         sys.exit(0)
-    self.test(sess, validate=True)
     return
   #==========================================================================
-  def test(self, sess, validate=False):
+  def test(self, sess, validate=False, ood=False):
     """"""
-
-    if validate:
+    filename = None
+    minibatches = None
+    dataset = None
+    op = None
+    if validate and not ood:
       filename = self.valid_file
       minibatches = self.valid_minibatches
       dataset = self._validset
       op = self.ops['valid_op']
-    else:
+    elif not validate and not ood:
       filename = self.test_file
       minibatches = self.test_minibatches
       dataset = self._testset
       op = self.ops['test_op']
+    elif not validate and ood:
+      filename = self.ood_file
+      minibatches = self.test_minibatches
+      dataset = self._oodset
+      op = self.ops['ood_op']
+    else:
+      print("Not Support Situation in Test")
+      exit()
 
-    all_predictions = []
-    all_sents = []
-    all_feature = []
-    all_targets = []
-    all_sequence_lengths = []
+    all_predictions = [[]]
+    all_sents = [[]]
+    all_feature = [[]]
+    all_targets = [[]]
+    all_sequence_lengths = [[]]
+    bkt_idx = 0
     for (feed_dict, sents, _feas) in minibatches():
       mb_inputs = feed_dict[dataset.inputs]
       mb_targets = feed_dict[dataset.targets]
       loss, predictions, n_tokens, n_correct, sequence_lengths = sess.run(op, feed_dict=feed_dict)
-      all_predictions.append(predictions)
-      all_sents.append(sents)
-      all_targets.append(mb_targets)
-      all_feature.append(_feas)
-      all_sequence_lengths.append(sequence_lengths)
-    p, r, f = self.model_calc(all_sequence_lengths, all_sents, all_feature, all_targets, all_predictions, self._vocabs, validate)
+      all_predictions[-1].extend(predictions)
+      all_sents[-1].extend(sents)
+      all_targets[-1].extend(mb_targets)
+      all_feature[-1].extend(_feas)
+      all_sequence_lengths[-1].extend(sequence_lengths)
+      if len(all_predictions[-1]) == len(dataset[bkt_idx]):
+        bkt_idx += 1
+        if bkt_idx < len(dataset._metabucket):
+          all_predictions.append([])
+          all_sents.append([])
+          all_feature.append([])
+          all_targets.append([])
+    p, r, f = self.model_calc(dataset, all_sequence_lengths, all_sents, all_feature, all_targets, all_predictions, self._vocabs, validate, ood)
     return p, r, f
 
   #=========================================================================
-  def model_calc(self, sequence_lengths, sents, features, targets, predictions, vocabs, validate):
+  def model_calc(self, dataset, sequence_lengths, sents, features, targets, predictions, vocabs, validate, ood):
     fout = None
-    if validate:
-      fout1 = open(self.save_dir+"/DevOut", "w")
-      fout2 = open(self.save_dir + "/DevGold", "w")
+    if validate and not ood:
+      fout = open(self.save_dir+"/SrlDevOut", "w")
+    elif not validate and not ood:
+      fout = open(self.save_dir+"/SrlTestOut", "w")
+    elif not validate and ood:
+      fout = open(self.save_dir+"/SrlOodOut","w")
     else:
-      fout1 = open(self.save_dir+"/TestOut", "w")
-      fout2 = open(self.save_dir + "/TestGold", "w")
-    for batch_lengths, batch_sents, batch_feature, batch_targets, batch_predictions in zip(sequence_lengths, sents, features, targets, predictions):
-      for length, words, feas, truths, predicts in zip(batch_lengths, batch_sents, batch_feature, batch_targets, batch_predictions):
-        count = 0
-        for word_id, word, fea, truth, predict in zip(range(length), words, feas, truths, predicts):
-          #print(fea)
-          count += 1
-          if fea[0] == '1' or fea[0] == 1:
-            if self.srls[predict] == "_":
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1]+".01"))
-            elif "+" in self.srls[predict]:
-              sense = self.srls[predict].split("+")[0]
-              tag = self.srls[predict].split("+")[1]
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + "."+sense, tag))
-            elif self.srls[predict][0]=='0':
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1]+"."+self.srls[predict]))
-            else:
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + ".01" , self.srls[predict]))
-            if not "+" in fea[2]:
-              fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1] + "." + fea[2]))
-            else:
-              sense = fea[2].split("+")[0]
-              tag = fea[2].split("+")[1]
-              fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + "." + sense, tag))
-          elif fea[0] == '0' or fea[0] == 0:
-            fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t%s\n" % (count, word, self.srls[predict]))
-            fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t%s\n" % (count, word, fea[2]))
-          else:
-            print("Error")
-            exit()
-        fout1.write('\n')
-        fout2.write('\n')
-    fout1.flush()
-    fout1.close()
-    fout2.flush()
-    fout2.close()
-    if validate:
-      p, r, f = evaluate(self.save_dir+"/DevOut", self.save_dir+"/DevGold")
+      print("Unsupported Mode in Result Calc")
+      exit()
+
+    for bkt_dix, idx in dataset._metabucket.data:
+      datas = dataset._metabucket[bkt_dix].data[idx]
+      words = sents[bkt_dix][idx]
+      feas = features[bkt_dix][idx]
+      truths = targets[bkt_dix][idx]
+      predicts = predictions[bkt_dix][idx]
+      length = sequence_lengths[bkt_dix][idx]
+      # Feature: 0: is_verb? 1:verb 2:srl 3:verb_sense
+      # The verb here is the predicted one, get from the data generate script
+      # Because we do not use the lemma here but the predicted verb
+      # We use this for evaluation
+      # verb_sense is the same, the data has be replace by the predicted one
+      # We need to compare these all data with the gold dataset
+      for i, (word_id, word, fea, truth, predict) in enumerate(zip(range(length), words, feas, truths, predicts)):
+        if not isinstance(fea[0], (int, long)):
+          print("Is index Error which is not int")
+          print(words)
+          exit()
+        tup = (
+          i+1,
+          word,
+          '_', # lemma position
+          '_', # predicted lemma position
+          '_', # pos position
+          '_', # predicted pos position
+          '_', # Feat
+          '_', # predicted Feat
+          '_', # head
+          '_', # phead
+          '_', # dep rel
+          '_', # predicted dep rel
+          'Y' if fea[0] == 1 else '_',
+          fea[1]+"."+fea[3] if fea[0] == 1 else "_",
+          self.srls[predict]
+        )
+        fout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % tup)
+      fout.write("\n")
+    fout.flush()
+    fout.close()
+    p = None
+    r = None
+    f = None
+    if validate and not ood:
+      p, r, f = evaluate(self.save_dir+"/SrlDevOut", self.source_dev)
+    elif not validate and not ood:
+      p, r, f = evaluate(self.save_dir + "/SrlTestOut", self.source_test)
+    elif not validate and ood:
+      p, r, f = evaluate(self.save_dir+"/SrlOodOut", self.source_ood)
     else:
-      p, r, f = evaluate(self.save_dir + "/TestOut", self.save_dir+"/TestGold")
+      print("Unsupported Mode in result calc")
+      exit()
 
     print("## F1: %f P: %f R: %f" % (f, p, r))
     return p, r, f
@@ -558,7 +608,6 @@ class SenseDisambNetwork(Configurable):
       except:
         print('\r', end='')
         sys.exit(0)
-    self.test(sess, validate=True)
     return
   #==========================================================================
   def test(self, sess, validate=False, ood=False):
@@ -751,9 +800,9 @@ if __name__ == '__main__':
 
   model = getattr(models, cargs['model_type'])
 
-  if 'save_dir' in cargs and os.path.isdir(cargs['save_dir']) and not (args.test or args.load or args.validate):
+  if 'save_dir' in cargs and os.path.isdir(cargs['save_dir']) and not (args.test or args.load or args.validate or args.ood):
     raw_input('Save directory already exists. Press <Enter> to overwrite or <Ctrl-C> to exit.')
-  if (args.test or args.load or args.validate) and 'save_dir' in cargs:
+  if (args.test or args.load or args.validate or args.ood) and 'save_dir' in cargs:
     cargs['config_file'] = os.path.join(cargs['save_dir'], 'config.cfg')
 
 
@@ -776,7 +825,7 @@ if __name__ == '__main__':
   config_proto.gpu_options.allow_growth = True
   with tf.Session(config=config_proto) as sess:
     sess.run(tf.global_variables_initializer())
-    if not args.test and not args.validate:
+    if not args.test and not args.validate and not args.ood:
       if args.load:
         '''
         os.system('echo Training: > %s/HEAD' % network.save_dir)

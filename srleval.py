@@ -3,9 +3,46 @@ from __future__ import print_function
 import re
 import os
 
+def combine_predicate(input_file):
+  output_file = input_file + "Ced"
+  text = [[]]
+  sw = [[]]
+  with open(input_file) as f:
+    for line_num, line in enumerate(f):
+      t = line.strip().split()
+      if t:
+        text[-1].append(t)
+        sw[-1].append(t[1])
+      else:
+        if len(sw) >= 2:
+          if sw[-2] == sw[-1]:
+            sw.pop()
+            sup = text.pop()
+            for item_num, item in enumerate(sup):
+              if item[12] == 'Y':
+                text[-1][item_num][12] = 'Y'
+                text[-1][item_num][13] = item[13]
+              text[-1][item_num].append(item[14])
+        text.append([])
+        sw.append([])
+    f.flush()
+    f.close()
+  if not text[-1]:
+    text.pop()
+  with open(output_file, "w") as f:
+    for sent in text:
+      for word in sent:
+        tup = "\t".join(word) + "\n"
+        f.write(tup)
+      f.write("\n")
+    f.flush()
+    f.close()
+
+  return output_file
 
 def evaluate(input_file, gold):
-  result = os.popen("perl bin/eval09.pl -q -b -g " + gold + " -s " + input_file).read()
+  combine_pred = combine_predicate(input_file)
+  result = os.popen("perl bin/eval09.pl -q -b -g " + gold + " -s " + combine_pred).read()
   #print(result)
   start = re.search('Labeled precision:',result).span()
   #print(start)
@@ -58,7 +95,7 @@ def SenseEvaluate(source, gold):
   if (total != sents):
     print("Sents number is not the same as total verb")
     exit()
-  acc = float(right)/float(total)
+  acc = float(right)/float(total) * 100
   print("There are %d sentence." %(total))
   return acc
 
