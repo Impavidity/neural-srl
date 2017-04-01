@@ -48,6 +48,8 @@ class Bucket(Configurable):
     idxf = None
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       words = [word[0] for word in sent]
+    elif self.model_type == "Parser":
+      words = [word[0] for word in sent][1:] # Remove root
     else:
       print("Unsupported Mode in Add Feature")
       exit()

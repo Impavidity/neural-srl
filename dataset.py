@@ -33,6 +33,8 @@ class Dataset(Configurable):
     self.inputs = tf.placeholder(dtype=tf.int32, shape=(None,None,None), name='inputs')
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       self.targets = tf.placeholder(dtype=tf.int32, shape=(None, None), name='targets')
+    elif self.model_type == "Parser":
+      self.targets = tf.placeholder(dtype=tf.int32, shape=(None, None, None), name='targets')
     else:
       print("Unsupported Mode in target placeholder")
       exit()

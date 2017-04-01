@@ -3,6 +3,52 @@ from __future__ import print_function
 import re
 import os
 
+def compare_insert(input_file, gold):
+  output_file = input_file + "Insert"
+  output = open(output_file, "w")
+  sin = open(input_file)
+  gin = open(gold)
+  sin = sin.readlines()
+  gin = gin.readlines()
+  length = len(gin)
+  index = 0
+  text = [[]]
+  sw = [[]]
+  gw = [[]]
+  for line_num, line0 in enumerate(sin):
+    line = line0.strip().split()
+    if line:
+      sw[-1].append(line[1])
+      text[-1].append(line0)
+    else:
+      while True:
+        while True:
+          lineg = gin[index].strip().split()
+          index += 1
+          if not lineg:
+            break
+          gw[-1].append(lineg[1])
+        if gw[-1] == sw[-1]:
+          for item in text[-1]:
+            output.write(item)
+          output.write("\n")
+          sw.append([])
+          gw.append([])
+          text.append([])
+          break
+        else:
+          for word_id, word in enumerate(gw[-1]):
+            tup = [str(word_id), word] + ["_"] * 12 + ["\n"]
+            output.write("\t".join(tup))
+          output.write("\n")
+          gw.append([])
+  output.flush()
+  output.close()
+  return output_file
+
+
+
+
 def combine_predicate(input_file):
   output_file = input_file + "Ced"
   text = [[]]
@@ -42,7 +88,8 @@ def combine_predicate(input_file):
 
 def evaluate(input_file, gold):
   combine_pred = combine_predicate(input_file)
-  result = os.popen("perl bin/eval09.pl -q -b -g " + gold + " -s " + combine_pred).read()
+  insert_pred = compare_insert(combine_pred, gold)
+  result = os.popen("perl bin/eval09.pl -q -b -g " + gold + " -s " + insert_pred).read()
   #print(result)
   start = re.search('Labeled precision:',result).span()
   #print(start)
@@ -104,6 +151,6 @@ def SenseEvaluate(source, gold):
 
 
 if __name__=="__main__":
-  #evaluate("../Conll09/CoNLL2009-ST-English-development.txt", "../Conll09/CoNLL2009-ST-English-development.txt")
+  #print(evaluate("../Conll09_Update/SrlDevOut", "../Conll09_Update/CoNLL2009-ST-English-development.txt"))
   #SenseEvaluate()
   pass
