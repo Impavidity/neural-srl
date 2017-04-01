@@ -129,9 +129,11 @@ class ParserNetwork(Configurable):
       best_las = 0
       test_uas = 0
       test_las = 0
+      ood_uas = 0
+      ood_las = 0
       total_train_iters = sess.run(self.global_step)
       while True:
-        for j, (feed_dict, _, _feas) in enumerate(self.train_minibatches()):
+        for j, (feed_dict, _sent, _feas) in enumerate(self.train_minibatches()):
           train_inputs = feed_dict[self._trainset.inputs]
           train_targets = feed_dict[self._trainset.targets]
           _, loss, n_correct, n_tokens = sess.run(self.ops['train_op'], feed_dict=feed_dict)
@@ -144,16 +146,20 @@ class ParserNetwork(Configurable):
           if total_train_iters == 1 or total_train_iters % validate_every == 0:
             print("## Validation: %8d" % (int(total_train_iters / validate_every)))
             uas, las = self.test(sess, validate=True)
-
             print("## Validation uas: %f  las: %f" %(uas, las))
             if las > best_las:
               best_las = las
               best_uas = uas
+              print("## Update the model")
               saver.save(sess, os.path.join(self.save_dir, self.name.lower() + '-trained'),
                          latest_filename=self.name.lower(), global_step=self.global_epoch)
-              test_uas, test_las = self.test(sess, validate=False)
+              print("## Test")
+              test_uas, test_las = self.test(sess, validate=False, ood=False)
+              print("## OOD")
+              ood_uas, ood_las = self.test(sess, validate=False, ood=True)
             print("## Currently the best validate UAS : %5.2f LAS : %5.2f" % (best_uas, best_las))
-            print("## Responding Test UAS : %5.2f LAS : %5.2f " % (test_uas, test_las))
+            print("## Test UAS : %5.2f LAS : %5.2f " % (test_uas, test_las))
+            print("## OOD UAS : %5.2f LAS : %5.2f " % (ood_uas, ood_las))
           if print_every and total_train_iters % print_every == 0:
             train_loss /= n_train_iters
             train_accuracy = 100 * n_train_correct / n_train_tokens
@@ -170,26 +176,35 @@ class ParserNetwork(Configurable):
       except:
         print('\r', end='')
         sys.exit(0)
-    with open(os.path.join(self.save_dir, 'scores.txt'), 'w') as f:
-      pass
-    self.test(sess, validate=True)
     return
 
   #=============================================================
   # TODO make this work if lines_per_buff isn't set to 0
-  def test(self, sess, validate=False):
+  def test(self, sess, validate=False, ood=False):
     """"""
-
-    if validate:
+    filename = None
+    minibatches = None
+    dataset = None
+    op = None
+    if validate and not ood:
       filename = self.valid_file
       minibatches = self.valid_minibatches
       dataset = self._validset
-      op = self.ops['test_op'][0]
-    else:
+      op = self.ops['validate_op']
+    elif not validate and not ood:
       filename = self.test_file
       minibatches = self.test_minibatches
       dataset = self._testset
-      op = self.ops['test_op'][1]
+      op = self.ops['test_op']
+    elif not validate and ood:
+      filename = self.ood_file
+      minibatches = self.ood_minibatches
+      dataset = self._oodset
+      op = self.ops['ood_op']
+    else:
+      print("Unsupported Mode in Test")
+      exit()
+
 
     all_predictions = [[]]
     all_sents = [[]]
@@ -198,6 +213,7 @@ class ParserNetwork(Configurable):
       mb_inputs = feed_dict[dataset.inputs]
       mb_targets = feed_dict[dataset.targets]
       mb_probs = sess.run(op, feed_dict=feed_dict)
+      # Here the prediction is two column, one is head, the other one is relation
       all_predictions[-1].extend(self.model.validate(mb_inputs, mb_targets, mb_probs))
       all_sents[-1].extend(sents)
       if len(all_predictions[-1]) == len(dataset[bkt_idx]):
@@ -212,24 +228,36 @@ class ParserNetwork(Configurable):
         words = all_sents[bkt_idx][idx]
         for i, (datum, word, pred) in enumerate(zip(data, words, preds)):
           tup = (
-            i+1,
+            str(i+1),
             word,
-            self.tags[pred[3]] if pred[3] != -1 else self.tags[datum[2]],
-            self.tags[pred[4]] if pred[4] != -1 else self.tags[datum[3]],
-            str(pred[5]) if pred[5] != -1 else str(datum[4]),
-            self.rels[pred[6]] if pred[6] != -1 else self.rels[datum[5]],
-            str(pred[7]) if pred[7] != -1 else '_',
-            self.rels[pred[8]] if pred[8] != -1 else '_',
+            '_',
+            '_',
+            '_',
+            '_',
+            '_',
+            '_',
+            pred[0],
+            '_',
+            pred[1],
+            '_',
+            '_',
+            '_'
           )
-          f.write('%s\t%s\t_\t%s\t%s\t_\t%s\t%s\t%s\t%s\n' % tup)
+          f.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' % tup)
         f.write('\n')
       f.flush()
       f.close()
-    uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename)), filename)
-    # with open(os.path.join(self.save_dir, 'scores.txt'), 'a') as f:
-    #   s, _ = self.model.evaluate(os.path.join(self.save_dir, os.path.basename(filename)), punct=self.model.PUNCT)
-    #   f.write(s)
-    # return s
+    uas = -1
+    las = -1
+    if validate and not ood:
+      uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_dev)
+    elif not validate and not ood:
+      uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_test)
+    elif not validate and ood:
+      uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_ood)
+    else:
+      print("Not supported mode in test")
+      exit()
     return uas, las
 
   #==============================================================
@@ -256,6 +284,7 @@ class ParserNetwork(Configurable):
     # These have to happen after optimizer.minimize is called
     valid_output = self._model(self._validset, moving_params=optimizer)
     test_output = self._model(self._testset, moving_params=optimizer)
+    ood_output = self._model(self._oodset, moving_params=optimizer)
 
     ops = {}
     ops['pretrain_op'] = [pretrain_op,
@@ -267,12 +296,18 @@ class ParserNetwork(Configurable):
                        train_output['loss']+l2_loss+regularization_loss,
                        train_output['n_correct'],
                        train_output['n_tokens']]
-    ops['valid_op'] = [valid_output['loss'],
-                       valid_output['n_correct'],
+    ops['valid_op'] = [valid_output['n_correct'],
                        valid_output['n_tokens'],
-                       valid_output['predictions']]
-    ops['test_op'] = [valid_output['probabilities'],
+                       valid_output['predictions'],
+                       valid_output['probabilities']]
+    ops['test_op'] = [test_output['n_correct'],
+                      test_output['n_tokens'],
+                      test_output['predictions'],
                       test_output['probabilities']]
+    ops['ood_op'] = [ood_output['n_correct'],
+                      ood_output['n_tokens'],
+                      ood_output['predictions'],
+                      ood_output['probabilities']]
     ops['optimizer'] = optimizer
 
     return ops

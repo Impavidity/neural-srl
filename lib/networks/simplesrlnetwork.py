@@ -312,7 +312,7 @@ class SimpleSRLNetwork(Configurable):
       # verb_sense is the same, the data has be replace by the predicted one
       # We need to compare these all data with the gold dataset
       for i, (word_id, word, fea, truth, predict) in enumerate(zip(range(length), words, feas, truths, predicts)):
-        if not isinstance(fea[0], (int, long)):
+        if fea[0] not in (0, 1, '0', '1'):
           print("Is index Error which is not int")
           print(words)
           print(feas)
@@ -330,8 +330,8 @@ class SimpleSRLNetwork(Configurable):
           '_', # phead
           '_', # dep rel
           '_', # predicted dep rel
-          'Y' if fea[0] == 1 else '_',
-          fea[1]+"."+fea[3] if fea[0] == 1 else "_",
+          'Y' if (fea[0] == 1 or fea[0] == '1') else '_',
+          fea[1]+"."+fea[3] if (fea[0] == 1 or fea[0] == '1') else "_",
           self.srls[predict]
         )
         fout.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % tup)

@@ -74,28 +74,6 @@ class BaseMultiTask(NN):
     return sents
 
   #=============================================================
-
-  @staticmethod
-  def evaluate(filename, punct=NN.PUNCT):
-    """"""
-
-    correct = {'UAS': [], 'LAS': []}
-    with open(filename) as f:
-      for line in f:
-        line = line.strip().split('\t')
-        if len(line) == 10 and line[4] not in punct:
-          if line[7] == '<UNK>':
-            continue
-          correct['UAS'].append(0)
-          correct['LAS'].append(0)
-          if line[6] == line[8]:
-            correct['UAS'][-1] = 1
-            if line[7] == line[9]:
-              correct['LAS'][-1] = 1
-    correct = {k:np.array(v) for k, v in correct.iteritems()}
-    return 'UAS: %.2f    LAS: %.2f\n' % (np.mean(correct['UAS']) * 100, np.mean(correct['LAS']) * 100), correct
-
-  #=============================================================
   @property
   def input_idxs(self):
     return (0, 1, 2, 6, 7)
