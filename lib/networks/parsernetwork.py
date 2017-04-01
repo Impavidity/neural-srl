@@ -238,7 +238,7 @@ class ParserNetwork(Configurable):
             '_',
             pred[0],
             '_',
-            pred[1],
+            self.rels(pred[1]),
             '_',
             '_',
             '_'
