@@ -43,7 +43,8 @@ def concate(source_file):
   return output_file
 
 def jointEval(source_file, gold_file):
-  #source_file = concate(source_file)
+  fout = open(source_file+"_result_report", "w")
+  source_file = concate(source_file)
   lmp = 0
   lmr = 0
   macro = 0
@@ -65,7 +66,9 @@ def jointEval(source_file, gold_file):
   lmp = float(jointString[3])
   lmr = float(jointString[8])
   macro = float(jointString[13])
-  #print(result)
+  fout.write(result)
+  fout.flush()
+  fout.close()
   return uas, las, p, r, f ,lmp, lmr, macro
 
 
