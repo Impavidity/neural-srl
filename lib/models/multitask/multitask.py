@@ -75,7 +75,7 @@ class MultiTask(BaseMultiTask):
 
 
     with tf.variable_scope('loss_weight_para', reuse=reuse):
-      loss_para_input = tf.concat(2, [be_parser, be_srler])
+      loss_para_input = tf.concat(1, [be_parser, be_srler])
       loss_para = self.MLP4LossWeight(loss_para_input)
       loss_para = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
       print(loss_para.get_shape().as_list())
