@@ -10,12 +10,8 @@ import sys
 from jointeval import jointEval
 import json
 
-import numpy as np
 import tensorflow as tf
 
-from remove import removeDul
-
-from lib import models
 from lib import optimizers
 
 from configurable import Configurable
@@ -353,7 +349,7 @@ class MultiTaskNetwork(Configurable):
             fea[1] + "." + fea[3] if (fea[0] == 1 or fea[0] == '1') else "_",
             self.srls[pred[2]] if has_srl else '_'
           )
-          f.write("\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\n" % tup)
+          f.write("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % tup)
         f.write("\n")
       f.flush()
       f.close()
