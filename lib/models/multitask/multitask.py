@@ -39,8 +39,9 @@ class MultiTask(BaseMultiTask):
     top_recur = tf.concat(2, [word_inputs, pos_inputs])
     for i in xrange(self.n_recur):
       with tf.variable_scope('RNN%d' % i, reuse=reuse):
-        top_recur, _ = self.RNN(top_recur)
+        top_recur, _be = self.RNN(top_recur)
 
+    be_parser = be_srler = _be
     # Modify Here
     word_pre = top_mlp = top_recur
     # top_mlp = top_recur
@@ -73,12 +74,12 @@ class MultiTask(BaseMultiTask):
     else:
       dep_mlp = head_dep_mlp = rel_mlp = head_rel_mlp = top_mlp
 
-
-    with tf.variable_scope('loss_weight_para', reuse=reuse):
-      loss_para_input = tf.concat(1, [be_parser, be_srler])
-      loss_para = self.MLP4LossWeight(loss_para_input)
-      loss_para4parser = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
-      loss_para4srler = self.tokens_to_keep3D - loss_para4parser
+    if self.complicated_loss:
+      with tf.variable_scope('loss_weight_para', reuse=reuse):
+        loss_para_input = tf.concat(1, [be_parser, be_srler])
+        loss_para = self.MLP4LossWeight(loss_para_input)
+        loss_para4parser = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
+        loss_para4srler = self.tokens_to_keep3D - loss_para4parser
 
 
 
