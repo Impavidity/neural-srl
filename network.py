@@ -70,15 +70,14 @@ if __name__ == '__main__':
   if args.complicated_loss:
     network.complicated_loss = True
 
-
   config_proto = tf.ConfigProto()
   config_proto.gpu_options.allow_growth = True
   with tf.Session(config=config_proto) as sess:
     sess.run(tf.global_variables_initializer())
     if not args.test and not args.validate and not args.ood:
-      if args.load:
+      if args.load and not network.stacking:
         saver = tf.train.Saver(name=network.name)
-        saver.restore(sess, tf.train.latest_checkpoint(network.save_dir, latest_filename=network.name.lower()))
+        saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
       else:
         os.system('echo Loading: >> %s/HEAD' % network.save_dir)

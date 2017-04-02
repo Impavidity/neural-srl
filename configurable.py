@@ -126,6 +126,14 @@ class Configurable(object):
     return self._config.get('OS', 'save_dir')
   argparser.add_argument('--save_dir')
   @property
+  def restore_from(self):
+    return self._config.get('OS', 'restore_from')
+  argparser.add_argument('--restore_from')
+  @property
+  def restore_name(self):
+    return self._config.get('OS', 'restore_name')
+  argparser.add_argument('--restore_name')
+  @property
   def source_train(self):
     return self._config.get('OS', 'source_train')
   argparser.add_argument('--source_train')
