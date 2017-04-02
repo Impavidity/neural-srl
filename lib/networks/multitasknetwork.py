@@ -154,6 +154,7 @@ class MultiTaskNetwork(Configurable):
       n_train_iters = 0
       total_train_iters = sess.run(self.global_step)
       best_score = 0
+      best_macro = 0
       best_p = 0
       best_r = 0
       best_f = 0
@@ -180,7 +181,7 @@ class MultiTaskNetwork(Configurable):
 
       if self.is_load:
         with open(self.save_dir+"/best_history") as json_data:
-          best_score, best_p, best_r, best_f, best_las, best_uas, \
+          best_score, best_macro, best_p, best_r, best_f, best_las, best_uas, \
           test_macro, test_p, test_r, test_f, test_las, test_uas, \
           ood_macro, ood_p, ood_r, ood_f, ood_las, ood_uas = json.load(json_data)
       while True:
@@ -193,11 +194,7 @@ class MultiTaskNetwork(Configurable):
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op'], feed_dict=feed_dict)
           elif self.stacking == True and self.complicated_loss == False:
-            if sess.run(self._global_epoch) < 120:
-              _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
-                n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
-            else:
-              _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
+            _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
           elif self.stacking == False and self.complicated_loss == True:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
@@ -232,9 +229,11 @@ class MultiTaskNetwork(Configurable):
             print("## Validation: %8d" % int(total_train_iters / validate_every))
             uas, las, p, r, f, lmp, lmr, macro = self.test(sess, validate=True, ood=False)
             print("## Validation UAS: %5.2f LAS: %5.2f P: %5.2f R: %5.2f F: %5.2f LMP: %5.2f LMR: %5.2f Macro: %5.2f" % (uas, las, p, r, f, lmp, lmr, macro))
-
-            if macro > best_score:
-              best_score = macro
+            temp_score = macro
+            if self.stacking:
+              temp_score = f
+            if temp_score > best_score:
+              best_macro = macro
               best_p = p
               best_r = r
               best_f = f
@@ -250,10 +249,10 @@ class MultiTaskNetwork(Configurable):
               print("## OOD")
               ood_uas, ood_las, ood_p, ood_r, ood_f, ood_lmp, ood_lmr, ood_macro = self.test(sess, validate=False, ood=True)
               fupdate = open(self.save_dir+'/best_history','w')
-              fupdate.write(json.dumps([best_score, best_p, best_r, best_f, best_las, best_uas, best_lmp, best_lmr,
+              fupdate.write(json.dumps([best_score, best_macro, best_p, best_r, best_f, best_las, best_uas, best_lmp, best_lmr,
                                         test_macro, test_p, test_r, test_f, test_las, test_uas, test_lmp, test_lmr,
                                         ood_macro,  ood_p,  ood_r,  ood_f,  ood_las,  ood_uas,  ood_lmp,  ood_lmr]))
-            print("## Currently the Best Validate Set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (best_f, best_p, best_r, best_las, best_uas, best_lmp, best_lmr, best_score))
+            print("## Currently the Best Validate Set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (best_f, best_p, best_r, best_las, best_uas, best_lmp, best_lmr, best_macro))
             print("## The Test set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (test_f, test_p, test_r, test_las, test_uas, test_lmp, test_lmr, test_macro))
             print("## The OOD set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (ood_f, ood_p, ood_r, ood_las, ood_uas, ood_lmp, ood_lmr, ood_macro))
 
