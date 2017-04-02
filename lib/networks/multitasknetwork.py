@@ -347,7 +347,7 @@ class MultiTaskNetwork(Configurable):
             '_', # pfeat
             pred[0],
             '_', # phead
-            self.rels[pred[1]],
+            self.deps[pred[1]],
             '_', # pdeprel
             'Y' if (fea[0] == 1 or fea[0] == '1') else '_',
             fea[1] + "." + fea[3] if (fea[0] == 1 or fea[0] == '1') else "_",
