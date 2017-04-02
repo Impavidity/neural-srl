@@ -76,7 +76,7 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     if not args.test and not args.validate and not args.ood:
       if args.load:
-        saver = tf.train.Saver(name=network.name)
+        saver = tf.train.Saver(name=network.restore_name)
         saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
         print("Load Model Successfully")
