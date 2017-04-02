@@ -24,6 +24,8 @@ if __name__ == '__main__':
   argparser.add_argument('--validate', action='store_true')
   argparser.add_argument('--ood', action='store_true')
   argparser.add_argument('--load', action='store_true')
+  argparser.add_argument('--stacking', action="store_true")
+  argparser.add_argument('--complicated_loss', action="store_true")
   # store_true : if it is declared, then set it as true
   args, extra_args = argparser.parse_known_args()
   #args: Namespace(load=False, model='Parser', pretrain=False, test=False)
@@ -63,6 +65,11 @@ if __name__ == '__main__':
     print("Unsupported Model")
     exit()
 
+  if args.stacking:
+    network.stacking = True
+  if args.complicated_loss:
+    network.complicated_loss = True
+
 
   config_proto = tf.ConfigProto()
   config_proto.gpu_options.allow_growth = True
@@ -75,8 +82,7 @@ if __name__ == '__main__':
         network.is_load = True
       else:
         os.system('echo Loading: >> %s/HEAD' % network.save_dir)
-
-      network.train(sess)
+        network.train(sess)
     else:
       os.system('echo Testing: >> %s/HEAD' % network.save_dir)
       saver = tf.train.Saver(name=network.name)

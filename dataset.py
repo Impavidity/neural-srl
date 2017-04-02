@@ -33,7 +33,7 @@ class Dataset(Configurable):
     self.inputs = tf.placeholder(dtype=tf.int32, shape=(None,None,None), name='inputs')
     if self.model_type == "SimpleSrler" or self.model_type == "SenseDisamb":
       self.targets = tf.placeholder(dtype=tf.int32, shape=(None, None), name='targets')
-    elif self.model_type == "Parser":
+    elif self.model_type == "Parser" or self.model_type == "MultiTask":
       self.targets = tf.placeholder(dtype=tf.int32, shape=(None, None, None), name='targets')
     else:
       print("Unsupported Mode in target placeholder")
@@ -122,7 +122,20 @@ class Dataset(Configurable):
           buff[i][j] = (word,) + words[word] + poss[pos] + (int(head),) + rels[rel]
         sent.insert(0, ('root', Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, 0 , Vocab.ROOT))
     elif self.model_type == "MultiTask":
-      pass
+      words, poss, deps, srls, verbs, is_verbs, verb_senses = self.vocabs
+      for i, sent in enumerate(buff):
+        is_verbs_index = [1 if item[is_verbs.conll_idx] == '1' else 0 for item in sent]
+        for item in range(len(is_verbs_index)):
+          if is_verbs_index[item] == 1:
+            continue
+          else:
+            sent[item][verbs.conll_idx] = "<PAD>"
+        for j, token in enumerate(sent):
+          word, pos, head, dep, srl, verb, is_verb, verb_sense = token[words.conll_idx], token[poss.conll_idx], token[3], token[deps.conll_idx],  token[srls.conll_idx], token[verbs.conll_idx], token[is_verbs.conll_idx], token[verb_senses.conll_idx]
+          buff[i][j] = (word,) + words[word] + poss[pos] + (int(head),) + deps[dep] + srls[srl] + verbs[verb] + is_verbs[is_verb] + verb_senses[verb_sense]
+          buff[i][j] += tuple([is_verbs_index[j]])
+          buff[i][j] += tuple([verb, srl, verb_sense])
+        sent.insert(0, ('root', Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, 0, Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, Vocab.ROOT, "root", "root", "root", "root" ))
     else:
       print("Unknown type In buff process")
     return buff

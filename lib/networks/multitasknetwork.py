@@ -7,8 +7,7 @@ from __future__ import print_function
 
 import os
 import sys
-from srleval import evaluate
-from parserEval import parserEval
+from jointeval import jointEval
 import json
 
 import numpy as np
@@ -51,7 +50,8 @@ class MultiTaskNetwork(Configurable):
                    (self.dep_file, 4, 'Deps'),
                    (self.srl_file, 5, 'Srls'),
                    (self.verb_file, 6, 'Verbs'),
-                   (self.is_verb_file, 7, "IsVerbs")]
+                   (self.is_verb_file, 7, "IsVerbs"),
+                   (self.verb_sense_file, 8, "VerbSense")]
     for i, (vocab_file, index, name) in enumerate(vocab_files):
       vocab = Vocab(vocab_file, index, self._config,
                     name=name,
@@ -65,20 +65,20 @@ class MultiTaskNetwork(Configurable):
     #for word in self.words:
     #  print(word, self.words[word])
     print("There are %d pos tag in training set" % (len(self.poss) - 3))
-    for pos in self.poss:
-      print(pos, self.poss[pos])
+    #for pos in self.poss:
+    #  print(pos, self.poss[pos])
     print("There are %d verbs in training set" % (len(self.verbs) - 3))
     #for verb in self.verbs:
     #  print(verb, self.verbs[verb])
     print("There are %d presence tag in training set" % (len(self.is_verbs) - 3))
-    for is_verb in self.is_verbs:
-      print(is_verb, self.is_verbs[is_verb])
+    #for is_verb in self.is_verbs:
+    #  print(is_verb, self.is_verbs[is_verb])
     print("There are %d srls in training set" % (len(self.srls) - 3))
-    for srl in self.srls:
-      print(srl, self.srls[srl])
+    #for srl in self.srls:
+    #  print(srl, self.srls[srl])
     print("There are %d dep in training set" % (len(self.deps) - 3))
-    for dep in self.deps:
-      print(dep, self.deps[dep])
+    #for dep in self.deps:
+    #  print(dep, self.deps[dep])
     print("########################Data##################")
 
     print("Begin to load the Dataset")
@@ -86,7 +86,11 @@ class MultiTaskNetwork(Configurable):
     self._trainset = Dataset(self.train_file, self._vocabs, model, self._config, name='Trainset')
     self._validset = Dataset(self.valid_file, self._vocabs, model, self._config, name='Validset')
     self._testset = Dataset(self.test_file, self._vocabs, model, self._config, name='Testset')
-
+    self._oodset = Dataset(self.ood_file, self._vocabs, model, self._config, name='OODTest')
+    print("There are %d sentences in training set" % (self._trainset.sentsNum()))
+    print("There are %d sentences in validation set" % (self._validset.sentsNum()))
+    print("There are %d sentences in testing set" % (self._testset.sentsNum()))
+    print("There are %d sentences in ood set" % (self._oodset.sentsNum()))
 
 
     print("Loaded the Dataset")
@@ -121,6 +125,14 @@ class MultiTaskNetwork(Configurable):
                                          self.model.target_idxs,
                                          shuffle=False)
 
+  def ood_minibatches(self):
+    """"""
+
+    return self._oodset.get_minibatches(self.test_batch_size,
+                                         self.model.input_idxs,
+                                         self.model.target_idxs,
+                                         shuffle=False)
+
   # =============================================================================
   def debug(self, sents, inputs, targets):
     for sent, feature, target in zip(sents, inputs, targets):
@@ -149,6 +161,8 @@ class MultiTaskNetwork(Configurable):
       best_p = 0
       best_r = 0
       best_f = 0
+      best_lmp = 0
+      best_lmr = 0
       best_las = 0
       best_uas = 0
       test_p = 0
@@ -156,11 +170,23 @@ class MultiTaskNetwork(Configurable):
       test_f = 0
       test_las = 0
       test_uas = 0
-      test_Macro = 0
+      test_lmp = 0
+      test_lmr = 0
+      test_macro = 0
+      ood_p = 0
+      ood_r = 0
+      ood_f = 0
+      ood_las = 0
+      ood_uas = 0
+      ood_lmp = 0
+      ood_lmr = 0
+      ood_macro = 0
 
       if self.is_load:
         with open(self.save_dir+"/best_history") as json_data:
-          best_score, best_p, best_r, best_f, best_las, best_uas, test_Macro, test_p, test_r, test_f, test_las, test_uas = json.load(json_data)
+          best_score, best_p, best_r, best_f, best_las, best_uas, \
+          test_macro, test_p, test_r, test_f, test_las, test_uas, \
+          ood_macro, ood_p, ood_r, ood_f, ood_las, ood_uas = json.load(json_data)
       while True:
         for j, (feed_dict, _sent, _feas) in enumerate(self.train_minibatches()):
           train_inputs = feed_dict[self._trainset.inputs]
@@ -170,16 +196,20 @@ class MultiTaskNetwork(Configurable):
           if self.stacking == False and self.complicated_loss == False:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op'], feed_dict=feed_dict)
-          if self.stacking == True and self.complicated_loss == False:
+          elif self.stacking == True and self.complicated_loss == False:
             if sess.run(self._global_epoch) < 120:
               _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
             else:
               _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
-          if self.stacking == False and self.complicated_loss == True:
+          elif self.stacking == False and self.complicated_loss == True:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op_complicated_loss'], feed_dict=feed_dict)
+          else:
+            print("Unsupported Mode here : You cannot let complicated loss and staking be true at the same time")
+            _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
+              n_tokens = sess.run(self.ops['train_op'], feed_dict=feed_dict)
           train_loss += loss
           n_train_sents += len(train_targets)
           n_train_correct_dep += n_correct_dep
@@ -204,31 +234,32 @@ class MultiTaskNetwork(Configurable):
 
           if total_train_iters == 1 or total_train_iters % validate_every == 0:
             print("## Validation: %8d" % int(total_train_iters / validate_every))
-            uas, las, p, r, f = self.test(sess, validate=True)
-            print("## Validation UAS: %5.2f LAS: %5.2f P: %5.2f R: %5.2f F: %5.2f" % (uas, las, p, r, f))
-            LMP = 0.5 * p + 0.5 * las
-            LMR = 0.5 * r + 0.5 * las
-            Macro = 2 * LMP * LMR / (LMP + LMR)
-            print("## Validation Macro %5.2f" % (Macro))
-            if Macro > best_score:
-              best_score = Macro
+            uas, las, p, r, f, lmp, lmr, macro = self.test(sess, validate=True, ood=False)
+            print("## Validation UAS: %5.2f LAS: %5.2f P: %5.2f R: %5.2f F: %5.2f LMP: %5.2f LMR: %5.2f Macro: %5.2f" % (uas, las, p, r, f, lmp, lmr, macro))
+
+            if macro > best_score:
+              best_score = macro
               best_p = p
               best_r = r
               best_f = f
               best_las = las
               best_uas = uas
+              best_lmp = lmp
+              best_lmr = lmr
               print("## Update Model")
               saver.save(sess, os.path.join(self.save_dir, self.name.lower() + '-trained'),
                          latest_filename=self.name.lower(), global_step=self.global_epoch)
               print("## Test")
-              test_uas, test_las, test_p, test_r, test_f = self.test(sess, validate=False)
-              test_LMP = 0.5 * test_p + 0.5 * test_las
-              test_LMR = 0.5 * test_r + 0.5 * test_las
-              test_Macro = 2 * test_LMP * test_LMR / (test_LMP + test_LMR)
+              test_uas, test_las, test_p, test_r, test_f, test_lmp, test_lmr, test_macro = self.test(sess, validate=False, ood=False)
+              print("## OOD")
+              ood_uas, ood_las, ood_p, ood_r, ood_f, ood_lmp, ood_lmr, ood_macro = self.test(sess, validate=False, ood=True)
               fupdate = open(self.save_dir+'/best_history','w')
-              fupdate.write(json.dumps([best_score, best_p, best_r, best_f, best_las, best_uas, test_Macro, test_p, test_r, test_f, test_las, test_uas]))
-            print("## Currently the best F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f Macro %5.2f" % (best_f, best_p, best_r, best_las, best_uas, best_score))
-            print("## The Test set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f Macro %5.2f" % (test_f, test_p, test_r, test_las, test_uas, test_Macro))
+              fupdate.write(json.dumps([best_score, best_p, best_r, best_f, best_las, best_uas, best_lmp, best_lmr,
+                                        test_macro, test_p, test_r, test_f, test_las, test_uas, test_lmp, test_lmr,
+                                        ood_macro,  ood_p,  ood_r,  ood_f,  ood_las,  ood_uas,  ood_lmp,  ood_lmr]))
+            print("## Currently the Best Validate Set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (best_f, best_p, best_r, best_las, best_uas, best_lmp, best_lmr, best_score))
+            print("## The Test set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (test_f, test_p, test_r, test_las, test_uas, test_lmp, test_lmr, test_macro))
+            print("## The OOD set F %5.2f P %5.2f R %5.2f LAS %5.2f UAS %5.2f LMP %5.2f LMR %5.2f Macro %5.2f" % (ood_f, ood_p, ood_r, ood_las, ood_uas, ood_lmp, ood_lmr, ood_macro))
 
         print("[epoch ]",sess.run(self._global_epoch.assign_add(1.)))
     except KeyboardInterrupt:
@@ -237,89 +268,38 @@ class MultiTaskNetwork(Configurable):
       except:
         print('\r', end='')
         sys.exit(0)
-    with open(os.path.join(self.save_dir, 'scores.txt'), 'w') as f:
-      pass
-    self.test(sess, validate=True)
     return
 
   # =============================================================
-  def model_calc(self, sents, features, targets, predictions, vocabs, validate):
-    fout = None
-    if validate:
-      fout1 = open(self.save_dir + "/DevOut", "w")
-      fout2 = open(self.save_dir + "/DevGold", "w")
-    else:
-      fout1 = open(self.save_dir + "/TestOut", "w")
-      fout2 = open(self.save_dir + "/TestGold", "w")
-    sents_num = 0
-    for batch_sents, batch_feature, batch_predictions in zip(sents, features, predictions):
-      for words, feas,  predicts in zip(batch_sents, batch_feature, batch_predictions):
-        count = 0
-        sents_num += 1
-        for word, fea, predict in zip(words, feas[1:], predicts[1:]):
-          # print(fea)
-          count += 1
-          if fea[1] == '<pad>':
-            break
-          if fea[0] == '1' or fea[0] == 1:
-            if self.srls[predict] == "_":
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1]+".01"))
-            elif "+" in self.srls[predict]:
-              sense = self.srls[predict].split("+")[0]
-              tag = self.srls[predict].split("+")[1]
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + "."+sense, tag))
-            elif self.srls[predict][0]=='0':
-              fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1]+"."+self.srls[predict]))
-            else:
-              fout1.write(
-                "%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + ".01" , self.srls[predict]))
-            if not "+" in fea[2]:
-              fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t_\n" % (count, word, fea[1] + "." + fea[2]))
-            else:
-              sense = fea[2].split("+")[0]
-              tag = fea[2].split("+")[1]
-              fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\tY\t%s\t%s\n" % (count, word, fea[1] + "." + sense, tag))
-          elif fea[0] == '0' or fea[0] == 0:
-            fout1.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t%s\n" % (count, word, self.srls[predict]))
-            fout2.write("%d\t%s\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t_\t%s\n" % (count, word, fea[2]))
-          else:
-            print("Error")
-            exit()
-        if fea[1]!='<pad>':
-          fout1.write('\n')
-          fout2.write('\n')
-    fout1.flush()
-    fout1.close()
-    fout2.flush()
-    fout2.close()
-    if validate:
-      p, r, f = evaluate(self.save_dir + "/DevOut", self.save_dir + "/DevGold")
-    else:
-      p, r, f = evaluate(self.save_dir + "/TestOut", self.save_dir + "/TestGold")
-    print("*** There are %d Sentences ***" % (sents_num))
-
-    return p, r, f
-
-  # =============================================================
   # TODO make this work if lines_per_buff isn't set to 0
-  def test(self, sess, validate=False):
+  def test(self, sess, validate=False, ood=False):
     """"""
-
-    if validate:
+    filename = None
+    minibatches = None
+    dataset = None
+    op = None
+    if validate and not ood:
       filename = self.valid_file
       minibatches = self.valid_minibatches
       dataset = self._validset
       op = self.ops['valid_op']
-    else:
+    elif not validate and not ood:
       filename = self.test_file
       minibatches = self.test_minibatches
       dataset = self._testset
       op = self.ops['test_op']
+    elif not validate and ood:
+      filename = self.ood_file
+      minibatches = self.ood_minibatches
+      dataset = self._oodset
+      op = self.ops['ood_op']
+    else:
+      print("Unsupported Mode in test")
+      exit()
 
     all_predictions = [[]]
     all_sents = [[]]
-    all_srl_feas = [[]]
-    all_srl_pres = [[]]
+    all_features = [[]]
     bkt_idx = 0
 
     for (feed_dict, sents, _feas) in minibatches():
@@ -328,59 +308,72 @@ class MultiTaskNetwork(Configurable):
       n_correct_dep, n_correct_srl, mb_probs, predictions_srl, n_tokens = sess.run(op, feed_dict=feed_dict)
 
       sequence = predictions_srl
-      all_srl_feas[-1].extend(_feas)
-      all_srl_pres[-1].extend(sequence)
       all_predictions[-1].extend(self.model.validate(mb_inputs, mb_targets, mb_probs, sequence))
       all_sents[-1].extend(sents)
+      all_features[-1].extend(_feas)
       if len(all_predictions[-1]) == len(dataset[bkt_idx]):
         bkt_idx += 1
         if bkt_idx < len(dataset._metabucket):
           all_predictions.append([])
           all_sents.append([])
-          all_srl_feas.append([])
-          all_srl_pres.append([])
+          all_features.append([])
 
     with open(os.path.join(self.save_dir, os.path.basename(filename)), 'w') as f:
       for bkt_idx, idx in dataset._metabucket.data:
         data = dataset._metabucket[bkt_idx].data[idx][1:]
+        # The preds here is with ROOT filtered
         preds = all_predictions[bkt_idx][idx]
         words = all_sents[bkt_idx][idx]
-        for i, (datum, word, pred) in enumerate(zip(data, words, preds)):
+        # Feature Here need Filtering the Root
+        feas = all_features[bkt_idx][idx][1:]
+        has_srl = False
+        if '1' in feas[:,0] or 1 in feas[:,0]:
+          has_srl = True
+        for i, (word, pred, fea) in enumerate(zip(words, preds, feas)):
+          if fea[0] not in (0, 1, '0', '1'):
+            print("Is index Error which is not int")
+            print(words)
+            print(feas)
+            exit()
           tup = (
-            i + 1,
+            str(i+1),
             word,
-            self.poss[datum[2]],
-            self.poss[datum[2]],
-            str(pred[4]) if pred[4] != -1 else '_',
-            self.deps[pred[5]] if pred[5] != -1 else '_',
-            str(pred[6]) if pred[6] != -1 else '_',
-            self.deps[pred[7]] if pred[7] != -1 else '_',
+            '_', # lemma
+            '_', # plemma
+            '_', # pos
+            '_', # ppos
+            '_', # feat
+            '_', # pfeat
+            pred[0],
+            '_', # phead
+            self.rels[pred[1]],
+            '_', # pdeprel
+            'Y' if (fea[0] == 1 or fea[0] == '1') else '_',
+            fea[1] + "." + fea[3] if (fea[0] == 1 or fea[0] == '1') else "_",
+            self.srls[pred[2]] if has_srl else '_'
           )
-          if self.deps[pred[7]] == "<UNK>":
-            break
-          f.write('%s\t%s\t_\t%s\t%s\t_\t%s\t%s\t%s\t%s\n' % tup)
-        if self.deps[pred[7]] != "<UNK>":
-          f.write('\n')
-
+          f.write("\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\t\s\n" % tup)
+        f.write("\n")
       f.flush()
       f.close()
-    removeDul(os.path.join(self.save_dir, os.path.basename(filename)))
-    if validate:
-      uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename)+"_rm"), "../Conll09/dep.conll.dev")
+    uas = None
+    las = None
+    p = None
+    r = None
+    f = None
+    lmp = None
+    lmr = None
+    macro = None
+    if validate and not ood:
+      uas, las, p, r, f, lmp, lmr, macro = jointEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_dev)
+    elif not validate and not ood:
+      uas, las, p, r, f, lmp, lmr, macro = jointEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_test)
+    elif not validate and ood:
+      uas, las, p, r, f, lmp, lmr, macro = jointEval(os.path.join(self.save_dir, os.path.basename(filename)), self.source_ood)
     else:
-      if self.ood:
-        uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename) + "_rm"), "../Conll09/dep.conll.ood")
-      else:
-        uas, las = parserEval(os.path.join(self.save_dir, os.path.basename(filename) + "_rm"), "../Conll09/dep.conll.test")
-    # with open(os.path.join(self.save_dir, 'scores.txt'), 'a') as f:
-    #   s, _ = self.model.evaluate(os.path.join(self.save_dir, os.path.basename(filename)+"_rm"), punct=self.model.PUNCT)
-    #  f.write(s)
-    # return uas, las, p, r, f
-    # las = float(s.strip().split()[3])
-    # uas = float(s.strip().split()[1])
-    #print("## Validation: uas %5.2f las %5.2f" %(uas,las))
-    p, r, f = self.model_calc(all_sents, all_srl_feas, None, all_srl_pres, None, validate=validate)
-    return uas,las,p,r,f
+      print("Unsupported Mode in Test")
+      exit()
+    return uas, las, p, r, f, lmp, lmr, macro
 
   # =============================================================
   def _gen_ops(self):
@@ -413,6 +406,7 @@ class MultiTaskNetwork(Configurable):
     # These have to happen after optimizer.minimize is called
     valid_output = self._model(self._validset, moving_params=optimizer)
     test_output = self._model(self._testset, moving_params=optimizer)
+    ood_output = self._model(self._oodset, moving_params=optimizer)
 
     ops = {}
     ops['pretrain_op'] = [pretrain_op,
@@ -460,6 +454,11 @@ class MultiTaskNetwork(Configurable):
                        test_output['probabilities'],
                        test_output['predictions_srl'],
                        test_output['n_tokens']]
+    ops['ood_op'] = [ood_output['n_correct_dep'],
+                      ood_output['n_correct_srl'],
+                      ood_output['probabilities'],
+                      ood_output['predictions_srl'],
+                      ood_output['n_tokens']]
 
 
     ops['optimizer'] = optimizer

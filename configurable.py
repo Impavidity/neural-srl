@@ -27,7 +27,8 @@ class Configurable(object):
       if len(args) > 1:
         raise TypeError('Configurables take at most one argument')
     self.is_load = False
-    self.split_embeddings = False
+    self.complicated_loss = False
+    self.stacking = False
     if args:
       self._config = args[0]
     else:

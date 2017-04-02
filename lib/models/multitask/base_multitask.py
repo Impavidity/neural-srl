@@ -57,19 +57,25 @@ class BaseMultiTask(NN):
     mb_parse_probs, mb_rel_probs = mb_probs
     for inputs, targets, parse_probs, rel_probs, srl_pred in zip(mb_inputs, mb_targets, mb_parse_probs, mb_rel_probs, sequence):
       tokens_to_keep = np.greater(inputs[:,0], Vocab.ROOT)
+      # Filter Root here
       length = np.sum(tokens_to_keep)
       parse_preds, rel_preds = self.prob_argmax(parse_probs, rel_probs, tokens_to_keep)
 
-      sent = -np.ones( (length, 10), dtype=int)
+      #sent = -np.ones( (length, 10), dtype=int)
+      sent = -np.ones((length, 3), dtype=int)
       tokens = np.arange(1, length+1)
-      sent[:,0] = tokens
-      sent[:,1:4] = inputs[tokens,0:3]
-      #sent[:,4] = targets[tokens,0]
-      #sent[:,4] = inputs[tokens, 2]
-      sent[:,4] = parse_preds[tokens]
-      sent[:,5] = rel_preds[tokens]
-      sent[:,6:-1] = targets[tokens,:]
-      sent[:,-1] = srl_pred[tokens]
+      sent[:, 0] = parse_preds[tokens]
+      sent[:, 1] = rel_preds[tokens]
+      sent[:, 2] = srl_pred[tokens]
+
+      # sent[:,0] = tokens
+      # sent[:,1:4] = inputs[tokens,0:3]
+      # #sent[:,4] = targets[tokens,0]
+      # #sent[:,4] = inputs[tokens, 2]
+      # sent[:,4] = parse_preds[tokens]
+      # sent[:,5] = rel_preds[tokens]
+      # sent[:,6:-1] = targets[tokens,:]
+      # sent[:,-1] = srl_pred[tokens]
       sents.append(sent)
     return sents
 
