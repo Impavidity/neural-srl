@@ -392,14 +392,13 @@ class NN(Configurable):
     n_dims = len(inputs.get_shape().as_list())
     batch_size = tf.shape(inputs)[0]
     #bucket_size = tf.shape(inputs)[1]
-    bucket_size = inputs.get_shape().as_list()[-2]
     input_size = inputs.get_shape().as_list()[-1]
     # Modified here
     output_size = 1
     # ==
-    output_shape = tf.pack([batch_size] + [bucket_size] * (n_dims - 2) + [output_size])
+    output_shape = tf.pack([batch_size]  + [output_size])
     #shape_to_set = [tf.Dimension(None)] * (n_dims - 1) + [tf.Dimension(output_size)]
-    shape_to_set = [tf.Dimension(None)] + [tf.Dimension(bucket_size)] + [tf.Dimension(output_size)]
+    shape_to_set = [tf.Dimension(None)]  + [tf.Dimension(output_size)]
 
     if self.moving_params is None:
       if self.drop_gradually:
