@@ -26,6 +26,7 @@ class MultiTask(BaseMultiTask):
 
     reuse = (moving_params is not None)
     self.tokens_to_keep3D = tf.expand_dims(tf.to_float(tf.greater(inputs[:,:,0], vocabs[0].ROOT)), 2)
+    self.tokens_to_keep3D_compute_loss = tf.expand_dims(tf.to_float(tf.greater(inputs[:,:,0], vocabs[0].ROOT)), 2)
     self.sequence_lengths = tf.reshape(tf.reduce_sum(self.tokens_to_keep3D, [1, 2]), [-1,1])
     self.n_tokens = tf.reduce_sum(self.sequence_lengths)
     self.moving_params = moving_params
@@ -45,10 +46,17 @@ class MultiTask(BaseMultiTask):
     # top_mlp = top_recur
     # End of Modify
 
+
     # Add another layer to parser here
     for i in xrange(self.n_parser_recur):
       with tf.variable_scope("ParserRNN%d" % i, reuse=reuse):
-        top_mlp, _ = self.RNN(top_mlp)
+        top_mlp, be_parser = self.RNN(top_mlp)
+
+    word_com = tf.concat(2, [word_pre, verb_inputs, is_verb_inputs])
+
+    for i in xrange(self.n_srl_recur):
+      with tf.variable_scope("SRLCOMRNN%d" % i, reuse=reuse):
+        word_com, be_srler = self.RNN(word_com)
 
     if self.n_mlp > 0:
       with tf.variable_scope('MLP0', reuse=reuse):
@@ -65,16 +73,30 @@ class MultiTask(BaseMultiTask):
     else:
       dep_mlp = head_dep_mlp = rel_mlp = head_rel_mlp = top_mlp
 
+
+    with tf.variable_scope('loss_weight_para', reuse=reuse):
+      loss_para_input = tf.concat(2, [be_parser, be_srler])
+      loss_para = self.MLP4LossWeight(loss_para_input)
+      loss_para = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
+      print(loss_para.get_shape().as_list())
+
+
     with tf.variable_scope('Parses', reuse=reuse):
       parse_logits = self.bilinear_classifier(dep_mlp, head_dep_mlp, add_bias1=True)
-      parse_output = self.output(parse_logits, targets[:,:,0])
+      if self.complicated_loss:
+        parse_output = self.complicated_output(parse_logits, targets[:,:,0], loss_para)
+      else:
+        parse_output = self.output(parse_logits, targets[:,:,0])
       if moving_params is None:
         predictions = targets[:,:,0]
       else:
         predictions = parse_output['predictions']
     with tf.variable_scope('Rels', reuse=reuse):
       rel_logits, rel_logits_cond = self.conditional_bilinear_classifier(rel_mlp, head_rel_mlp, len(vocabs[2]), predictions)
-      rel_output = self.output(rel_logits, targets[:,:,1])
+      if self.complicated_loss:
+        rel_output = self.complicated_output(rel_logits, targets[:,:,1], loss_para)
+      else:
+        rel_output = self.output(rel_logits, targets[:,:,1])
       rel_output['probabilities'] = self.conditional_probabilities(rel_logits_cond)
 
     # Modifying
@@ -84,12 +106,7 @@ class MultiTask(BaseMultiTask):
     #    srl_top_recur, _ = self.RNN(srl_top_recur)
     # word_com = tf.concat(2, [srl_top_recur, verb_inputs, is_verb_inputs] + context)
     # End of Modifying
-    word_com = tf.concat(2, [word_pre, verb_inputs, is_verb_inputs])
 
-
-    for i in xrange(self.n_srl_recur):
-      with tf.variable_scope("SRLCOMRNN%d"%i, reuse=reuse):
-        word_com,_ = self.RNN(word_com)
 
     predicate_token = tf.to_int32(tf.equal(inputs[:, :, 4], vocabs[5]['1']))
     # Mask predicate hidden representation out
@@ -123,7 +140,13 @@ class MultiTask(BaseMultiTask):
     with tf.variable_scope('SRLClassifier_para', reuse=reuse):
       para = self.MLP4SRLWeight(para_input)
       result_dist = tf.batch_matmul(classifier_input, para, adj_y=True)
-      srl_output = self.output(result_dist, targets[:,:,2])
+      if self.complicated_loss:
+        srl_output = self.complicated_output(result_dist, targets[:,:,2], loss_para)
+      else:
+        srl_output = self.output(result_dist, targets[:,:,2])
+
+
+
 
     output = {}
     output['probabilities'] = tf.tuple([parse_output['probabilities'],

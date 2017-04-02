@@ -35,6 +35,7 @@ class NN(Configurable):
       self._global_sigmoid = 1
     
     self.tokens_to_keep3D = None
+    self.tokens_to_keep3D_compute_loss = None
     self.sequence_lengths = None
     self.n_tokens = None
     self.moving_params = None
@@ -375,6 +376,58 @@ class NN(Configurable):
       with tf.variable_scope('Linear', reuse=True):
         matrix = tf.get_variable('Weights')
         I = tf.diag(tf.ones([self.recur_size*4]))
+        for W in tf.split(1, n_splits, matrix):
+          WTWmI = tf.matmul(W, W, transpose_a=True) - I
+          tf.add_to_collection('ortho_losses', tf.nn.l2_loss(WTWmI))
+      for split in linear:
+        tf.add_to_collection('covar_losses', self.covar_loss(split))
+    if n_splits == 1:
+      return linear[0]
+    else:
+      return linear
+  #=============================================================
+  def MLP4LossWeight(self, inputs, n_splits=1):
+    """"""
+
+    n_dims = len(inputs.get_shape().as_list())
+    batch_size = tf.shape(inputs)[0]
+    #bucket_size = tf.shape(inputs)[1]
+    bucket_size = inputs.get_shape().as_list()[-2]
+    input_size = inputs.get_shape().as_list()[-1]
+    # Modified here
+    output_size = 1
+    # ==
+    output_shape = tf.pack([batch_size] + [bucket_size] * (n_dims - 2) + [output_size])
+    #shape_to_set = [tf.Dimension(None)] * (n_dims - 1) + [tf.Dimension(output_size)]
+    shape_to_set = [tf.Dimension(None)] + [tf.Dimension(bucket_size)] + [tf.Dimension(output_size)]
+
+    if self.moving_params is None:
+      if self.drop_gradually:
+        s = self.global_sigmoid
+        keep_prob = s + (1 - s) * self.mlp_keep_prob
+      else:
+        keep_prob = self.mlp_keep_prob
+    else:
+      keep_prob = 1
+    if isinstance(keep_prob, tf.Tensor) or keep_prob < 1:
+      noise_shape = tf.pack([batch_size] + [1] * (n_dims - 2) + [input_size])
+      inputs = tf.nn.dropout(inputs, keep_prob, noise_shape=noise_shape)
+
+    linear = linalg.my_linear(inputs,
+                           output_size,
+                           n_splits=n_splits,
+                           add_bias=False,
+                           moving_params=self.moving_params)
+    if n_splits == 1:
+      linear = [linear]
+    for i, split in enumerate(linear):
+      split = tf.nn.relu(split)
+      split.set_shape(shape_to_set)
+      linear[i] = split
+    if self.moving_params is None:
+      with tf.variable_scope('Linear', reuse=True):
+        matrix = tf.get_variable('Weights')
+        I = tf.diag(tf.ones([output_size]))
         for W in tf.split(1, n_splits, matrix):
           WTWmI = tf.matmul(W, W, transpose_a=True) - I
           tf.add_to_collection('ortho_losses', tf.nn.l2_loss(WTWmI))
@@ -765,7 +818,42 @@ class NN(Configurable):
     }
     
     return output
-  
+  #=============================================================
+  def complicated_output(self, logits3D, targets3D, weight_para):
+    """"""
+
+    original_shape = tf.shape(logits3D)
+    batch_size = original_shape[0]
+    bucket_size = original_shape[1]
+    flat_shape = tf.pack([batch_size, bucket_size])
+
+    logits2D = tf.reshape(logits3D, tf.pack([batch_size * bucket_size, -1]))
+    targets1D = tf.reshape(targets3D, [-1])
+    tokens_to_keep1D = tf.reshape(self.tokens_to_keep3D, [-1])
+    tokens_to_keep1D_compute_loss = tf.reshape(self.tokens_to_keep3D, [-1])
+
+    predictions1D = tf.to_int32(tf.argmax(logits2D, 1))
+    probabilities2D = tf.nn.softmax(logits2D)
+    cross_entropy1D = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits2D, labels=targets1D)
+
+    correct1D = tf.to_float(tf.equal(predictions1D, targets1D))
+    n_correct = tf.reduce_sum(correct1D * tokens_to_keep1D)
+    accuracy = n_correct / self.n_tokens
+    loss = tf.reduce_sum(cross_entropy1D * tokens_to_keep1D_compute_loss) / self.n_tokens
+
+    output = {
+      'probabilities': tf.reshape(probabilities2D, original_shape),
+      'predictions': tf.reshape(predictions1D, flat_shape),
+      'tokens': tokens_to_keep1D,
+      'correct': correct1D * tokens_to_keep1D,
+      'n_correct': n_correct,
+      'n_tokens': self.n_tokens,
+      'accuracy': accuracy,
+      'loss': self.weighted_parser * loss
+    }
+
+    return output
+
   #=============================================================
   def conditional_probabilities(self, logits4D, transpose=True):
     """"""
