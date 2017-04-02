@@ -327,8 +327,9 @@ class MultiTaskNetwork(Configurable):
         # Feature Here need Filtering the Root
         feas = all_features[bkt_idx][idx][1:]
         has_srl = False
-        if '1' in feas[:,0] or 1 in feas[:,0]:
-          has_srl = True
+        for item in feas:
+          if item[0] == '1' or item[0] == 1:
+            has_srl = True
         for i, (word, pred, fea) in enumerate(zip(words, preds, feas)):
           if fea[0] not in (0, 1, '0', '1'):
             print("Is index Error which is not int")
