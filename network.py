@@ -82,7 +82,7 @@ if __name__ == '__main__':
         network.is_load = True
       else:
         os.system('echo Loading: >> %s/HEAD' % network.save_dir)
-        network.train(sess)
+      network.train(sess)
     else:
       os.system('echo Testing: >> %s/HEAD' % network.save_dir)
       saver = tf.train.Saver(name=network.name)

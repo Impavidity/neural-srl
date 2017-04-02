@@ -420,7 +420,7 @@ class NN(Configurable):
     if n_splits == 1:
       linear = [linear]
     for i, split in enumerate(linear):
-      split = tf.nn.relu(split)
+      split = tf.sigmoid(split)
       split.set_shape(shape_to_set)
       linear[i] = split
     if self.moving_params is None:
