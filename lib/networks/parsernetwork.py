@@ -131,6 +131,10 @@ class ParserNetwork(Configurable):
       test_las = 0
       ood_uas = 0
       ood_las = 0
+      if self.is_load:
+        with open(self.save_dir + "/best_history") as json_data:
+          best_uas, best_las, test_uas, test_las, ood_uas, ood_las = json.load(json_data)
+
       total_train_iters = sess.run(self.global_step)
       while True:
         for j, (feed_dict, _sent, _feas) in enumerate(self.train_minibatches()):
@@ -157,6 +161,8 @@ class ParserNetwork(Configurable):
               test_uas, test_las = self.test(sess, validate=False, ood=False)
               print("## OOD")
               ood_uas, ood_las = self.test(sess, validate=False, ood=True)
+              fupdate = open(self.save_dir + '/best_history', 'w')
+              fupdate.write(json.dumps([best_uas, best_las, test_uas, test_las, ood_uas, ood_las]))
             print("## Currently the best validate UAS : %5.2f LAS : %5.2f" % (best_uas, best_las))
             print("## Test UAS : %5.2f LAS : %5.2f " % (test_uas, test_las))
             print("## OOD UAS : %5.2f LAS : %5.2f " % (ood_uas, ood_las))
@@ -258,6 +264,7 @@ class ParserNetwork(Configurable):
     else:
       print("Not supported mode in test")
       exit()
+    print("## LAS : %5.2f UAS : %5.2f" % (las, uas))
     return uas, las
 
   #==============================================================

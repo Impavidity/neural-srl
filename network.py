@@ -70,16 +70,9 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     if not args.test and not args.validate and not args.ood:
       if args.load:
-        '''
-        os.system('echo Training: > %s/HEAD' % network.save_dir)
         saver = tf.train.Saver(name=network.name)
         saver.restore(sess, tf.train.latest_checkpoint(network.save_dir, latest_filename=network.name.lower()))
         network.is_load = True
-        if os.path.isfile(os.path.join(network.save_dir, 'history.pkl')):
-          with open(os.path.join(network.save_dir, 'history.pkl')) as f:
-            network.history = pkl.load(f)
-        '''
-        pass # We do not support restart training mechanism currently
       else:
         os.system('echo Loading: >> %s/HEAD' % network.save_dir)
 
