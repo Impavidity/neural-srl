@@ -75,10 +75,11 @@ if __name__ == '__main__':
   with tf.Session(config=config_proto) as sess:
     sess.run(tf.global_variables_initializer())
     if not args.test and not args.validate and not args.ood:
-      if args.load and not network.stacking:
+      if args.load:
         saver = tf.train.Saver(name=network.name)
         saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
+        print("Load Model Successfully")
       else:
         os.system('echo Loading: >> %s/HEAD' % network.save_dir)
       network.train(sess)
