@@ -77,14 +77,15 @@ class MultiTask(BaseMultiTask):
     with tf.variable_scope('loss_weight_para', reuse=reuse):
       loss_para_input = tf.concat(1, [be_parser, be_srler])
       loss_para = self.MLP4LossWeight(loss_para_input)
-      loss_para = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
-      print(loss_para.get_shape().as_list())
+      loss_para4parser = tf.mul(self.tokens_to_keep3D_compute_loss, loss_para)
+      loss_para4srler = self.tokens_to_keep3D - loss_para4parser
+
 
 
     with tf.variable_scope('Parses', reuse=reuse):
       parse_logits = self.bilinear_classifier(dep_mlp, head_dep_mlp, add_bias1=True)
       if self.complicated_loss:
-        parse_output = self.complicated_output(parse_logits, targets[:,:,0], loss_para)
+        parse_output = self.complicated_output(parse_logits, targets[:,:,0], loss_para4parser)
       else:
         parse_output = self.output(parse_logits, targets[:,:,0])
       if moving_params is None:
@@ -94,7 +95,7 @@ class MultiTask(BaseMultiTask):
     with tf.variable_scope('Rels', reuse=reuse):
       rel_logits, rel_logits_cond = self.conditional_bilinear_classifier(rel_mlp, head_rel_mlp, len(vocabs[2]), predictions)
       if self.complicated_loss:
-        rel_output = self.complicated_output(rel_logits, targets[:,:,1], loss_para)
+        rel_output = self.complicated_output(rel_logits, targets[:,:,1], loss_para4parser)
       else:
         rel_output = self.output(rel_logits, targets[:,:,1])
       rel_output['probabilities'] = self.conditional_probabilities(rel_logits_cond)
@@ -141,7 +142,7 @@ class MultiTask(BaseMultiTask):
       para = self.MLP4SRLWeight(para_input)
       result_dist = tf.batch_matmul(classifier_input, para, adj_y=True)
       if self.complicated_loss:
-        srl_output = self.complicated_output(result_dist, targets[:,:,2], loss_para)
+        srl_output = self.complicated_output(result_dist, targets[:,:,2], loss_para4srler)
       else:
         srl_output = self.output(result_dist, targets[:,:,2])
 
