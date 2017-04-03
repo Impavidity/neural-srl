@@ -79,6 +79,10 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     if not args.test and not args.validate and not args.ood:
       if args.load:
+        #var_list = filter(lambda x: u'Srls' not in x.name and u'Verbs' not in x.name
+        # and u'VerbSense' not in x.name and u'SRLClassifier_para' not in x.name
+        # and u'SRLCOMRNN0' not in x.name and u'SRLCOMRNN1' not in x.name
+        # and u'IsVerbs' not in x.name,tf.global_variables())
         saver = tf.train.Saver(name=network.restore_name)
         saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
