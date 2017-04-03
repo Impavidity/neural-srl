@@ -404,9 +404,9 @@ class MultiTaskNetwork(Configurable):
       pretrain_op = self.model.ZERO
 
     train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
-    train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
-    train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
-    train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+    train_op_stacking1 = optimizer_stacking1.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
+    train_op_stacking2 = optimizer_stacking2.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
+    train_op_complicated_loss = optimizer_complicated_loss.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
     # These have to happen after optimizer.minimize is called
     valid_output = self._model(self._validset, moving_params=optimizer)
     test_output = self._model(self._testset, moving_params=optimizer)
