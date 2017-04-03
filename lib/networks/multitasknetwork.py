@@ -179,7 +179,7 @@ class MultiTaskNetwork(Configurable):
       ood_lmr = 0
       ood_macro = 0
 
-      if self.is_load:
+      if self.is_load and not self.stacking_srl:
         with open(self.save_dir+"/best_history") as json_data:
           best_score, best_macro, best_p, best_r, best_f, best_las, best_uas, \
           test_macro, test_p, test_r, test_f, test_las, test_uas, \
