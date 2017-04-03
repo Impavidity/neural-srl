@@ -19,7 +19,7 @@ class MultiTask(BaseMultiTask):
   #=============================================================
   def __call__(self, dataset, moving_params=None):
     """"""
-
+    output = {}
     vocabs = dataset.vocabs
     inputs = dataset.inputs
     targets = dataset.targets
@@ -109,48 +109,48 @@ class MultiTask(BaseMultiTask):
     # word_com = tf.concat(2, [srl_top_recur, verb_inputs, is_verb_inputs] + context)
     # End of Modifying
 
+    with tf.variable_scope('filter_srl', reuse=reuse):
+      predicate_token = tf.to_int32(tf.equal(inputs[:, :, 4], vocabs[5]['1']))
+      # Mask predicate hidden representation out
+      predicate_h = tf.mul(word_com, tf.to_float(tf.expand_dims(predicate_token, 2)))
+      # print(predicate_h.get_shape().as_list())
+      # Reduce dimension
+      predicate_h = tf.reduce_sum(predicate_h, axis=1)
+      # print(predicate_h.get_shape().as_list())
+      # Broadcasting
+      predicate_h = tf.mul(tf.expand_dims(predicate_h, 1), self.tokens_to_keep3D)
+      # print(predicate_h.get_shape().as_list())
+      # Concat
+      classifier_input = tf.concat(2, [predicate_h, word_com])
 
-    predicate_token = tf.to_int32(tf.equal(inputs[:, :, 4], vocabs[5]['1']))
-    # Mask predicate hidden representation out
-    predicate_h = tf.mul(word_com, tf.to_float(tf.expand_dims(predicate_token, 2)))
-    # print(predicate_h.get_shape().as_list())
-    # Reduce dimension
-    predicate_h = tf.reduce_sum(predicate_h, axis=1)
-    # print(predicate_h.get_shape().as_list())
-    # Broadcasting
-    predicate_h = tf.mul(tf.expand_dims(predicate_h, 1), self.tokens_to_keep3D)
-    # print(predicate_h.get_shape().as_list())
-    # Concat
-    classifier_input = tf.concat(2, [predicate_h, word_com])
+      # Mask predicate embedding out
+      predicate_em = tf.mul(verb_inputs, tf.to_float(tf.expand_dims(predicate_token, 2)))
+      # Reduce dimension
+      predicate_em = tf.reduce_sum(predicate_em, axis=1)  # b x dim
+      # b x dim -> b x r x dim
+      predicate_em = tf.pack([predicate_em] * len(vocabs[3]), axis=1)
+      # Role Representation
 
-    # Mask predicate embedding out
-    predicate_em = tf.mul(verb_inputs, tf.to_float(tf.expand_dims(predicate_token, 2)))
-    # Reduce dimension
-    predicate_em = tf.reduce_sum(predicate_em, axis=1)  # b x dim
-    # b x dim -> b x r x dim
-    predicate_em = tf.pack([predicate_em] * len(vocabs[3]), axis=1)
-    # Role Representation
+      role_em_list = vocabs[3].embedding_lookup(range(len(vocabs[3])), moving_params=self.moving_params)
+      batch_list = tf.to_float(tf.greater(self.sequence_lengths, -1))
+      # print(batch_list.get_shape().as_list())
+      # batch_list = tf.pack([batch_list]*len(vocabs[2]), axis=1)
+      # print(batch_list.get_shape().as_list())
+      role_em_list = tf.mul(tf.to_float(tf.expand_dims(batch_list, 2)), role_em_list)
+      para_input = tf.concat(2, [predicate_em, role_em_list])
 
-    role_em_list = vocabs[3].embedding_lookup(range(len(vocabs[3])), moving_params=self.moving_params)
-    batch_list = tf.to_float(tf.greater(self.sequence_lengths, -1))
-    # print(batch_list.get_shape().as_list())
-    # batch_list = tf.pack([batch_list]*len(vocabs[2]), axis=1)
-    # print(batch_list.get_shape().as_list())
-    role_em_list = tf.mul(tf.to_float(tf.expand_dims(batch_list, 2)), role_em_list)
-    para_input = tf.concat(2, [predicate_em, role_em_list])
-
-    with tf.variable_scope('SRLClassifier_para', reuse=reuse):
-      para = self.MLP4SRLWeight(para_input)
-      result_dist = tf.batch_matmul(classifier_input, para, adj_y=True)
-      if self.complicated_loss:
-        srl_output = self.complicated_output(result_dist, targets[:,:,2], loss_para4srler)
-      else:
-        srl_output = self.output(result_dist, targets[:,:,2])
-
-
+      with tf.variable_scope('SRLClassifier_para', reuse=reuse):
+        para = self.MLP4SRLWeight(para_input)
+        result_dist = tf.batch_matmul(classifier_input, para, adj_y=True)
+        if self.complicated_loss:
+          srl_output = self.complicated_output(result_dist, targets[:,:,2], loss_para4srler)
+        else:
+          srl_output = self.output(result_dist, targets[:,:,2])
 
 
-    output = {}
+
+
+
     output['probabilities'] = tf.tuple([parse_output['probabilities'],
                                         rel_output['probabilities']])
     output['predictions_dep'] = parse_output['predictions']

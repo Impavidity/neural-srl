@@ -28,7 +28,8 @@ class Configurable(object):
         raise TypeError('Configurables take at most one argument')
     self.is_load = False
     self.complicated_loss = False
-    self.stacking = False
+    self.stacking_dep = False
+    self.stacking_srl = False
     if args:
       self._config = args[0]
     else:

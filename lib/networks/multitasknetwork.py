@@ -190,13 +190,16 @@ class MultiTaskNetwork(Configurable):
           train_targets = feed_dict[self._trainset.targets]
           # Check Data Input
           #self.debug(_sent, train_inputs, train_targets)
-          if self.stacking == False and self.complicated_loss == False:
+          if self.stacking_dep == False and self.stacking_srl == False and self.complicated_loss == False:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op'], feed_dict=feed_dict)
-          elif self.stacking == True and self.complicated_loss == False:
+          elif self.stacking_dep == True and self.stacking_srl == False and self.complicated_loss == False:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
-                n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
-          elif self.stacking == False and self.complicated_loss == True:
+                n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
+          elif self.stacking_dep == False and self.stacking_srl == True and self.complicated_loss == False:
+            _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
+              n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
+          elif self.stacking_dep == False and self.stacking_srl == False and self.complicated_loss == True:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op_complicated_loss'], feed_dict=feed_dict)
           else:
@@ -230,8 +233,10 @@ class MultiTaskNetwork(Configurable):
             uas, las, p, r, f, lmp, lmr, macro = self.test(sess, validate=True, ood=False)
             print("## Validation UAS: %5.2f LAS: %5.2f P: %5.2f R: %5.2f F: %5.2f LMP: %5.2f LMR: %5.2f Macro: %5.2f" % (uas, las, p, r, f, lmp, lmr, macro))
             temp_score = macro
-            if self.stacking:
+            if self.stacking_srl:
               temp_score = f
+            if self.stacking_dep:
+              temp_score = las
             if temp_score > best_score:
               best_score = temp_score
               best_macro = macro
