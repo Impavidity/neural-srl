@@ -26,6 +26,7 @@ if __name__ == '__main__':
   argparser.add_argument('--load', action='store_true')
   argparser.add_argument('--stacking_dep', action="store_true")
   argparser.add_argument('--stacking_srl', action="store_true")
+  argparser.add_argument('--srl_major', action="store_true")
   argparser.add_argument('--complicated_loss', action="store_true")
   # store_true : if it is declared, then set it as true
   args, extra_args = argparser.parse_known_args()
@@ -72,6 +73,8 @@ if __name__ == '__main__':
     network.stacking_srl = True
   if args.complicated_loss:
     network.complicated_loss = True
+  if args.srl_major:
+    network.srl_major = True
 
   config_proto = tf.ConfigProto()
   config_proto.gpu_options.allow_growth = True

@@ -30,6 +30,7 @@ class Configurable(object):
     self.complicated_loss = False
     self.stacking_dep = False
     self.stacking_srl = False
+    self.srl_major = False
     if args:
       self._config = args[0]
     else:

@@ -237,6 +237,8 @@ class MultiTaskNetwork(Configurable):
               temp_score = f
             if self.stacking_dep:
               temp_score = las
+            if self.srl_major:
+              temp_score = f
             if temp_score > best_score:
               best_score = temp_score
               best_macro = macro
