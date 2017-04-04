@@ -26,6 +26,7 @@ if __name__ == '__main__':
   argparser.add_argument('--load', action='store_true')
   argparser.add_argument('--stacking_dep', action="store_true")
   argparser.add_argument('--stacking_srl', action="store_true")
+  argparser.add_argument('--stacking', action="store_true")
   argparser.add_argument('--srl_major', action="store_true")
   argparser.add_argument('--complicated_loss', action="store_true")
   # store_true : if it is declared, then set it as true
