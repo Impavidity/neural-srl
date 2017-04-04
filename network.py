@@ -86,7 +86,8 @@ if __name__ == '__main__':
         # and u'VerbSense' not in x.name and u'SRLClassifier_para' not in x.name
         # and u'SRLCOMRNN0' not in x.name and u'SRLCOMRNN1' not in x.name
         # and u'IsVerbs' not in x.name,tf.global_variables())
-        saver = tf.train.Saver(name=network.restore_name)
+        var_list = filter(lambda x : u'RadamOptimizer' not in x.name, tf.global_variables())
+        saver = tf.train.Saver(name=network.restore_name, var_list=var_list)
         saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
         print("Load Model Successfully")

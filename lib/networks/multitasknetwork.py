@@ -387,6 +387,7 @@ class MultiTaskNetwork(Configurable):
     optimizer_stacking1 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
     optimizer_stacking2 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
     optimizer_complicated_loss = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
+
     train_output = self._model(self._trainset)
 
     l2_loss = self.l2_reg * tf.add_n(
@@ -408,9 +409,17 @@ class MultiTaskNetwork(Configurable):
     train_op_stacking2 = optimizer_stacking2.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
     train_op_complicated_loss = optimizer_complicated_loss.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
     # These have to happen after optimizer.minimize is called
-    valid_output = self._model(self._validset, moving_params=optimizer)
-    test_output = self._model(self._testset, moving_params=optimizer)
-    ood_output = self._model(self._oodset, moving_params=optimizer)
+    optimize = optimizer
+    if self.stacking_dep == True:
+      optimize = optimizer_stacking1
+    if self.stacking_srl == True:
+      optimize = optimizer_stacking2
+    if self.complicated_loss == True:
+      optimize = optimizer_complicated_loss
+
+    valid_output = self._model(self._validset, moving_params=optimize)
+    test_output = self._model(self._testset, moving_params=optimize)
+    ood_output = self._model(self._oodset, moving_params=optimize)
 
     ops = {}
     ops['pretrain_op'] = [pretrain_op,
