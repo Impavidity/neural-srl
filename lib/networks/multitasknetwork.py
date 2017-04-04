@@ -202,6 +202,18 @@ class MultiTaskNetwork(Configurable):
           elif self.stacking_dep == False and self.stacking_srl == False and self.complicated_loss == True:
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op_complicated_loss'], feed_dict=feed_dict)
+          elif self.stacking == True:
+            if sess.run(self._global_epoch) < 20:
+              _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
+                n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
+              self.dep_major = True
+            else:
+              _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
+                n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
+              if self.change == False:
+                self.dep_major = False
+                self.srl_major = True
+                best_score = 0
           else:
             print("Unsupported Mode here : You cannot let complicated loss and staking be true at the same time")
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
@@ -239,6 +251,8 @@ class MultiTaskNetwork(Configurable):
               temp_score = las
             if self.srl_major:
               temp_score = f
+            if self.dep_major:
+              temp_score = las
             if temp_score > best_score:
               best_score = temp_score
               best_macro = macro

@@ -75,6 +75,8 @@ if __name__ == '__main__':
     network.complicated_loss = True
   if args.srl_major:
     network.srl_major = True
+  if args.stacking:
+    network.stacking = True
 
   config_proto = tf.ConfigProto()
   config_proto.gpu_options.allow_growth = True

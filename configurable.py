@@ -31,6 +31,9 @@ class Configurable(object):
     self.stacking_dep = False
     self.stacking_srl = False
     self.srl_major = False
+    self.dep_major = False
+    self.stacking = False
+    self.change = False
     if args:
       self._config = args[0]
     else:
