@@ -364,7 +364,7 @@ class NN(Configurable):
     linear = linalg.my_linear(inputs,
                            output_size,
                            n_splits=n_splits,
-                           add_bias=False,
+                           add_bias=True,
                            moving_params=self.moving_params)
     if n_splits == 1:
       linear = [linear]
