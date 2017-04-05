@@ -35,16 +35,16 @@ class MultiTask(BaseMultiTask):
     verb_inputs = vocabs[4].embedding_lookup(inputs[:, :, 3], moving_params=self.moving_params)
     is_verb_inputs = vocabs[5].embedding_lookup(inputs[:, :, 4], moving_params=self.moving_params)
 
-    top_recur = tf.concat(2, [word_inputs, pos_inputs, verb_inputs, is_verb_inputs])
-    #top_recur = tf.concat(2, [word_inputs, pos_inputs])
+    # top_recur = tf.concat(2, [word_inputs, pos_inputs, verb_inputs, is_verb_inputs])
+    top_recur = tf.concat(2, [word_inputs, pos_inputs])
     for i in xrange(self.n_recur):
       with tf.variable_scope('RNN%d' % i, reuse=reuse):
         top_recur, _be = self.RNN(top_recur)
 
     be_parser = be_srler = _be
     # Modify Here
-    # word_pre = top_mlp = top_recur
-    word_com = top_mlp = top_recur
+    word_pre = top_mlp = top_recur
+    #word_com = top_mlp = top_recur
     # top_mlp = top_recur
     # End of Modify
 
@@ -54,7 +54,7 @@ class MultiTask(BaseMultiTask):
       with tf.variable_scope("ParserRNN%d" % i, reuse=reuse):
         top_mlp, be_parser = self.RNN(top_mlp)
 
-    #word_com = tf.concat(2, [word_pre, verb_inputs, is_verb_inputs])
+    word_com = tf.concat(2, [word_pre, verb_inputs, is_verb_inputs])
 
     for i in xrange(self.n_srl_recur):
       with tf.variable_scope("SRLCOMRNN%d" % i, reuse=reuse):
