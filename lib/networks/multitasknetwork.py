@@ -399,9 +399,9 @@ class MultiTaskNetwork(Configurable):
     """"""
 
     optimizer = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
-    optimizer_stacking1 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
-    optimizer_stacking2 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
-    optimizer_complicated_loss = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
+    #optimizer_stacking1 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
+    #optimizer_stacking2 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
+    #optimizer_complicated_loss = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
 
     train_output = self._model(self._trainset)
 
@@ -419,22 +419,19 @@ class MultiTaskNetwork(Configurable):
       pretrain_loss = self.model.ZERO
       pretrain_op = self.model.ZERO
 
-    train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
-    train_op_stacking1 = optimizer_stacking1.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
-    train_op_stacking2 = optimizer_stacking2.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
-    train_op_complicated_loss = optimizer_complicated_loss.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+    if self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
+      train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+    else:
+      print("Current Are not support")
+      exit()
+      train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
+      train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
+      train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
     # These have to happen after optimizer.minimize is called
-    optimize = optimizer
-    if self.stacking_dep == True:
-      optimize = optimizer_stacking1
-    if self.stacking_srl == True:
-      optimize = optimizer_stacking2
-    if self.complicated_loss == True:
-      optimize = optimizer_complicated_loss
 
-    valid_output = self._model(self._validset, moving_params=optimize)
-    test_output = self._model(self._testset, moving_params=optimize)
-    ood_output = self._model(self._oodset, moving_params=optimize)
+    valid_output = self._model(self._validset, moving_params=optimizer)
+    test_output = self._model(self._testset, moving_params=optimizer)
+    ood_output = self._model(self._oodset, moving_params=optimizer)
 
     ops = {}
     ops['pretrain_op'] = [pretrain_op,

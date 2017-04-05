@@ -51,6 +51,7 @@ class Parser(BaseParser):
           rel_mlp = self.MLP(rel_mlp)
         with tf.variable_scope('HeadRelMLP%d' % i, reuse=reuse):
           head_rel_mlp = self.MLP(head_rel_mlp)
+      # Para1 tag_inputs Para2 w Para3 U
     else:
       dep_mlp = head_dep_mlp = rel_mlp = head_rel_mlp = top_mlp
     
