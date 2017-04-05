@@ -440,35 +440,39 @@ class MultiTaskNetwork(Configurable):
                           covar_loss,
                           ortho_loss]
     #_, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, n_tokens
-    ops['train_op'] = [train_op,
-                       train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss,
-                       train_output['n_correct_dep'],
-                       train_output['n_correct_srl'],
-                       train_output['predictions_dep'],
-                       train_output['predictions_srl'],
-                       train_output['n_tokens']
-                       ]
-    ops['train_op_stacking1'] = [train_op_stacking1,
-                       train_output['loss_parser'] + l2_loss + regularization_loss,
-                       train_output['n_correct_dep'],
-                       train_output['n_correct_srl'],
-                       train_output['predictions_dep'],
-                       train_output['predictions_srl'],
-                       train_output['n_tokens']]
-    ops['train_op_stacking2'] = [train_op_stacking2,
-                       train_output['loss_srl'] + l2_loss + regularization_loss,
-                       train_output['n_correct_dep'],
-                       train_output['n_correct_srl'],
-                       train_output['predictions_dep'],
-                       train_output['predictions_srl'],
-                       train_output['n_tokens']]
-    ops['train_op_complicated_loss'] = [train_op_complicated_loss,
-                       train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss,
-                       train_output['n_correct_dep'],
-                       train_output['n_correct_srl'],
-                       train_output['predictions_dep'],
-                       train_output['predictions_srl'],
-                       train_output['n_tokens']]
+    if self.complicated_loss == False and self.stacking ==False and self.stacking_dep == False and self.stacking_srl == False:
+      ops['train_op'] = [train_op,
+                         train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss,
+                         train_output['n_correct_dep'],
+                         train_output['n_correct_srl'],
+                         train_output['predictions_dep'],
+                         train_output['predictions_srl'],
+                         train_output['n_tokens']
+                         ]
+    else:
+      print("Not Support Mode")
+      exit()
+      ops['train_op_stacking1'] = [train_op_stacking1,
+                         train_output['loss_parser'] + l2_loss + regularization_loss,
+                         train_output['n_correct_dep'],
+                         train_output['n_correct_srl'],
+                         train_output['predictions_dep'],
+                         train_output['predictions_srl'],
+                         train_output['n_tokens']]
+      ops['train_op_stacking2'] = [train_op_stacking2,
+                         train_output['loss_srl'] + l2_loss + regularization_loss,
+                         train_output['n_correct_dep'],
+                         train_output['n_correct_srl'],
+                         train_output['predictions_dep'],
+                         train_output['predictions_srl'],
+                         train_output['n_tokens']]
+      ops['train_op_complicated_loss'] = [train_op_complicated_loss,
+                         train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss,
+                         train_output['n_correct_dep'],
+                         train_output['n_correct_srl'],
+                         train_output['predictions_dep'],
+                         train_output['predictions_srl'],
+                         train_output['n_tokens']]
     ops['valid_op'] = [valid_output['n_correct_dep'],
                        valid_output['n_correct_srl'],
                        valid_output['probabilities'],
