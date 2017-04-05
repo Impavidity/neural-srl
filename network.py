@@ -50,7 +50,11 @@ if __name__ == '__main__':
 
   network = None
 
-
+  # graph = tf.Graph()
+  #with graph.as_default():
+  #tf.set_random_seed(1)
+  #np.random.seed(1)
+  #print(tf.get_default_graph().seed)
   if cargs['model_type'] == "SimpleSrler":
     cargs.pop("model_type","")
     network = SimpleSRLNetwork(model, **cargs)
@@ -63,7 +67,6 @@ if __name__ == '__main__':
   elif cargs['model_type'] == "MultiTask":
     cargs.pop("model_type","")
     network = MultiTaskNetwork(model, **cargs)
-
   else:
     print("Unsupported Model")
     exit()

@@ -211,6 +211,7 @@ class MultiTaskNetwork(Configurable):
               _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking2'], feed_dict=feed_dict)
               if self.change == False:
+                self._global_step = tf.Variable(0., trainable=False)
                 self.change = True
                 self.dep_major = False
                 self.srl_major = True
@@ -421,12 +422,18 @@ class MultiTaskNetwork(Configurable):
 
     if self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
       train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+    elif self.complicated_loss == True and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
+      train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+    elif self.complicated_loss == False and self.stacking_srl == True and self.stacking == False and self.stacking_dep == False:
+      train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
+    elif self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == True:
+      train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
     else:
       print("Current Are not support")
       exit()
-      train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
-      train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
-      train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+
+
+
     # These have to happen after optimizer.minimize is called
 
     valid_output = self._model(self._validset, moving_params=optimizer)
@@ -449,16 +456,15 @@ class MultiTaskNetwork(Configurable):
                          train_output['predictions_srl'],
                          train_output['n_tokens']
                          ]
-    else:
-      print("Not Support Mode")
-      exit()
+    elif self.complicated_loss == False and (self.stacking_dep == True or self.stacking == True) and self.stacking_srl == False:
       ops['train_op_stacking1'] = [train_op_stacking1,
-                         train_output['loss_parser'] + l2_loss + regularization_loss,
-                         train_output['n_correct_dep'],
-                         train_output['n_correct_srl'],
-                         train_output['predictions_dep'],
-                         train_output['predictions_srl'],
-                         train_output['n_tokens']]
+                                   train_output['loss_parser'] + l2_loss + regularization_loss,
+                                   train_output['n_correct_dep'],
+                                   train_output['n_correct_srl'],
+                                   train_output['predictions_dep'],
+                                   train_output['predictions_srl'],
+                                   train_output['n_tokens']]
+    elif self.complicated_loss == False and self.stacking_dep == False and (self.stacking == True or self.stacking_srl == True):
       ops['train_op_stacking2'] = [train_op_stacking2,
                          train_output['loss_srl'] + l2_loss + regularization_loss,
                          train_output['n_correct_dep'],
@@ -466,6 +472,7 @@ class MultiTaskNetwork(Configurable):
                          train_output['predictions_dep'],
                          train_output['predictions_srl'],
                          train_output['n_tokens']]
+    elif self.complicated_loss == True and self.stacking_dep == False and self.stacking == False and self.stacking_srl == False:
       ops['train_op_complicated_loss'] = [train_op_complicated_loss,
                          train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss,
                          train_output['n_correct_dep'],
@@ -473,6 +480,10 @@ class MultiTaskNetwork(Configurable):
                          train_output['predictions_dep'],
                          train_output['predictions_srl'],
                          train_output['n_tokens']]
+    else:
+      print("Not Support Mode")
+      exit()
+
     ops['valid_op'] = [valid_output['n_correct_dep'],
                        valid_output['n_correct_srl'],
                        valid_output['probabilities'],
