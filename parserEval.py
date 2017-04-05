@@ -12,6 +12,15 @@ def parserEval(source, gold):
   uas = float(parserString[20])
   return uas, las
 
+def embedding_output(save, sents, hidden_repre):
+  with open(save+"/parsing_bed",'a') as f:
+    for sent, hidden in zip(sents, hidden_repre):
+      for word, hid in zip(sent, hidden[1:]):
+        f.write(word+" ")
+        for item in hid:
+          f.write(item+" ")
+        f.write("\n")
+
 
 
 if __name__=="__main__":

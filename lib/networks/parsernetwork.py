@@ -10,6 +10,7 @@ import sys
 import time
 import pickle as pkl
 from parserEval import parserEval
+from parserEval import embedding_output
 import json
 
 import numpy as np
@@ -218,7 +219,8 @@ class ParserNetwork(Configurable):
     for (feed_dict, sents, _feas) in minibatches():
       mb_inputs = feed_dict[dataset.inputs]
       mb_targets = feed_dict[dataset.targets]
-      mb_probs = sess.run(op, feed_dict=feed_dict)
+      mb_probs, hidden_repre = sess.run(op, feed_dict=feed_dict)
+      embedding_output(self.save_dir, sents, hidden_repre)
       # Here the prediction is two column, one is head, the other one is relation
       all_predictions[-1].extend(self.model.validate(mb_inputs, mb_targets, mb_probs))
       all_sents[-1].extend(sents)
@@ -303,9 +305,12 @@ class ParserNetwork(Configurable):
                        train_output['loss']+l2_loss+regularization_loss,
                        train_output['n_correct'],
                        train_output['n_tokens']]
-    ops['valid_op'] = valid_output['probabilities']
-    ops['test_op'] = test_output['probabilities']
-    ops['ood_op'] = ood_output['probabilities']
+    ops['valid_op'] = [valid_output['probabilities'],
+                       valid_output['hidden_representation']]
+    ops['test_op'] = [test_output['probabilities'],
+                      test_output['hidden_representation']]
+    ops['ood_op'] = [ood_output['probabilities'],
+                     ood_output['hidden_representation']]
     ops['optimizer'] = optimizer
 
     return ops

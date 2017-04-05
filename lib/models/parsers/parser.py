@@ -87,6 +87,7 @@ class Parser(BaseParser):
     output['head_rel'] = head_rel_mlp
     output['parse_logits'] = parse_logits
     output['rel_logits'] = rel_logits
+    output['hidden_representation'] = top_recur
     return output
   
   #=============================================================
