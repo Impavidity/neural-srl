@@ -214,7 +214,7 @@ class MultiTaskNetwork(Configurable):
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op_complicated_loss'], feed_dict=feed_dict)
           elif self.stacking == True and self.stacking_dep == False and self.stacking_srl == False and self.complicated_loss == False:
-            if sess.run(self._global_epoch) //5 % 2 == 0:
+            if sess.run(self._global_epoch) % 2 == 0:
               _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
               # self.dep_major = True
