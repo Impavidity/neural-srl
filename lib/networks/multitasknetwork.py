@@ -424,7 +424,8 @@ class MultiTaskNetwork(Configurable):
       train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
     elif self.complicated_loss == True and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
       train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
-    elif self.complicated_loss == False and self.stacking_srl == True and self.stacking == False and self.stacking_dep == False:
+    elif self.complicated_loss == False and (self.stacking_srl == True or self.stacking == True) and self.stacking_dep == False:
+      ## Temperal Modification for staking
       train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
     elif self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == True:
       train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
