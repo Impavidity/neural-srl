@@ -181,9 +181,9 @@ class MultiTaskNetwork(Configurable):
 
       if self.is_load and not self.stacking_srl:
         with open(self.save_dir+"/best_history") as json_data:
-          best_score, best_macro, best_p, best_r, best_f, best_las, best_uas, \
-          test_macro, test_p, test_r, test_f, test_las, test_uas, \
-          ood_macro, ood_p, ood_r, ood_f, ood_las, ood_uas = json.load(json_data)
+          best_score, best_macro, best_p, best_r, best_f, best_las, best_uas, best_lmp, best_lmr, \
+          test_macro, test_p, test_r, test_f, test_las, test_uas, test_lmp, test_lmr, \
+          ood_macro, ood_p, ood_r, ood_f, ood_las, ood_uas, test_lmp, test_lmr = json.load(json_data)
       while True:
         for j, (feed_dict, _sent, _feas) in enumerate(self.train_minibatches()):
           train_inputs = feed_dict[self._trainset.inputs]
@@ -203,7 +203,7 @@ class MultiTaskNetwork(Configurable):
             _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
               n_tokens = sess.run(self.ops['train_op_complicated_loss'], feed_dict=feed_dict)
           elif self.stacking == True and self.stacking_dep == False and self.stacking_srl == False and self.complicated_loss == False:
-            if sess.run(self._global_epoch) < 20:
+            if sess.run(self._global_epoch) < 3:
               _, loss, n_correct_dep, n_correct_srl, predictions_dep, predictions_srl, \
                 n_tokens = sess.run(self.ops['train_op_stacking1'], feed_dict=feed_dict)
               self.dep_major = True

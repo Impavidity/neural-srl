@@ -345,6 +345,7 @@ class Configurable(object):
   def weighted_parser(self):
     return self._config.getfloat('Learning rate', 'weighted_parser')
   argparser.add_argument('--weighted_parser')
+
   
   #=============================================================
   # [Radam]
