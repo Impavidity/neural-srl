@@ -411,6 +411,8 @@ class MultiTaskNetwork(Configurable):
     """"""
 
     optimizer = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
+    if self.stacking:
+      optimizer_dup = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
     #optimizer_stacking1 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
     #optimizer_stacking2 = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
     #optimizer_complicated_loss = optimizers.RadamOptimizer(self._config, global_step=self.global_step)
@@ -433,16 +435,15 @@ class MultiTaskNetwork(Configurable):
 
     if self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
       train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
-    elif self.complicated_loss == True and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
+    if self.complicated_loss == True and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
       train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
-    elif self.complicated_loss == False and (self.stacking_srl == True or self.stacking == True) and self.stacking_dep == False:
-      ## Temperal Modification for staking
+    if self.complicated_loss == False and self.stacking_srl == True and self.stacking == False and self.stacking_dep == False:
       train_op_stacking2 = optimizer.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
-    elif self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == True:
+    if self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == True:
       train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
-    else:
-      print("Current Are not support")
-      exit()
+    if self.complicated_loss == False and self.stacking_dep == False and self.stacking == True and self.stacking_srl == False:
+      train_op_stacking1 = optimizer.minimize(train_output['loss_parser'] + l2_loss + regularization_loss)
+      train_op_stacking2 = optimizer_dup.minimize(train_output['loss_srl'] + l2_loss + regularization_loss)
 
 
 
