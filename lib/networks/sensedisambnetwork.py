@@ -34,7 +34,7 @@ After training the network and get the result, we need to
 
 class SenseDisambNetwork(Configurable):
 
-  def __init__(self, model, *args, **kwargs):
+  def __init__(self, ar, model, *args, **kwargs):
 
     if args:
       if len(args) > 1:

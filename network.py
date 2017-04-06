@@ -57,30 +57,21 @@ if __name__ == '__main__':
   #print(tf.get_default_graph().seed)
   if cargs['model_type'] == "SimpleSrler":
     cargs.pop("model_type","")
-    network = SimpleSRLNetwork(model, **cargs)
+    network = SimpleSRLNetwork(args, model, **cargs)
   elif cargs['model_type'] == "SenseDisamb":
     cargs.pop("model_type","")
-    network = SenseDisambNetwork(model, **cargs)
+    network = SenseDisambNetwork(args, model, **cargs)
   elif cargs['model_type'] == "Parser":
     cargs.pop("model_type","")
-    network = ParserNetwork(model, **cargs)
+    network = ParserNetwork(args, model, **cargs)
   elif cargs['model_type'] == "MultiTask":
     cargs.pop("model_type","")
-    network = MultiTaskNetwork(model, **cargs)
+    network = MultiTaskNetwork(args, model, **cargs)
   else:
     print("Unsupported Model")
     exit()
 
-  if args.stacking_dep:
-    network.stacking_dep = True
-  if args.stacking_srl:
-    network.stacking_srl = True
-  if args.complicated_loss:
-    network.complicated_loss = True
-  if args.srl_major:
-    network.srl_major = True
-  if args.stacking:
-    network.stacking = True
+
 
   config_proto = tf.ConfigProto()
   config_proto.gpu_options.allow_growth = True
@@ -92,8 +83,8 @@ if __name__ == '__main__':
         # and u'VerbSense' not in x.name and u'SRLClassifier_para' not in x.name
         # and u'SRLCOMRNN0' not in x.name and u'SRLCOMRNN1' not in x.name
         # and u'IsVerbs' not in x.name,tf.global_variables())
-        var_list = filter(lambda x : u'RadamOptimizer' not in x.name, tf.global_variables())
-        saver = tf.train.Saver(name=network.restore_name, var_list=var_list)
+        # var_list = filter(lambda x : u'RadamOptimizer' not in x.name, tf.global_variables())
+        saver = tf.train.Saver(name=network.restore_name)
         saver.restore(sess, tf.train.latest_checkpoint(network.restore_from, latest_filename=network.restore_name.lower()))
         network.is_load = True
         print("Load Model Successfully")

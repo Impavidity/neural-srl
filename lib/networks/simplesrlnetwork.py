@@ -27,7 +27,7 @@ from dataset import Dataset
 
 class SimpleSRLNetwork(Configurable):
 
-  def __init__(self, model, *args, **kwargs):
+  def __init__(self, ar, model, *args, **kwargs):
 
     if args:
       if len(args) > 1:

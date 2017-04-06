@@ -22,7 +22,7 @@ class MultiTaskNetwork(Configurable):
   """"""
 
   # =============================================================
-  def __init__(self, model, *args, **kwargs):
+  def __init__(self, ar, model, *args, **kwargs):
     """"""
 
     if args:
@@ -90,6 +90,17 @@ class MultiTaskNetwork(Configurable):
 
 
     print("Loaded the Dataset")
+
+    if ar.stacking_dep:
+      self.stacking_dep = True
+    if ar.stacking_srl:
+      self.stacking_srl = True
+    if ar.complicated_loss:
+      self.complicated_loss = True
+    if ar.srl_major:
+      self.srl_major = True
+    if ar.stacking:
+      self.stacking = True
 
     self._ops = self._gen_ops()
 

@@ -29,7 +29,7 @@ class ParserNetwork(Configurable):
   """"""
 
   #=============================================================
-  def __init__(self, model, *args, **kwargs):
+  def __init__(self, ar, model, *args, **kwargs):
     """"""
 
     if args:
