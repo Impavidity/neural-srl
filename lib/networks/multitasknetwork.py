@@ -434,7 +434,7 @@ class MultiTaskNetwork(Configurable):
       pretrain_op = self.model.ZERO
 
     if self.complicated_loss == False and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
-      train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
+      train_op = optimizer.minimize(self.weighted_parser * train_output['loss_parser'] + self.weighted_srler * train_output['loss_srl'] + l2_loss + regularization_loss)
     if self.complicated_loss == True and self.stacking_srl == False and self.stacking == False and self.stacking_dep == False:
       train_op_complicated_loss = optimizer.minimize(train_output['loss_parser'] + train_output['loss_srl'] + l2_loss + regularization_loss)
     if self.complicated_loss == False and self.stacking_srl == True and self.stacking == False and self.stacking_dep == False:
