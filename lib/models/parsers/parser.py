@@ -79,7 +79,7 @@ class Parser(BaseParser):
     output['accuracy'] = output['n_correct'] / output['n_tokens']
     output['loss'] = parse_output['loss'] + rel_output['loss'] 
     
-    output['embed'] = tf.pack([word_inputs, tag_inputs])
+    #output['embed'] = tf.pack([word_inputs, tag_inputs])
     output['recur'] = top_recur
     output['dep'] = dep_mlp
     output['head_dep'] = head_dep_mlp

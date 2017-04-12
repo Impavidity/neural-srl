@@ -52,8 +52,8 @@ if __name__ == '__main__':
 
   # graph = tf.Graph()
   #with graph.as_default():
-  tf.set_random_seed(19950105)
-  np.random.seed(19950105)
+  tf.set_random_seed(1995)
+  np.random.seed(1995)
   #print(tf.get_default_graph().seed)
   if cargs['model_type'] == "SimpleSrler":
     cargs.pop("model_type","")
