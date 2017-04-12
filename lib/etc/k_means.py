@@ -157,7 +157,7 @@ class KMeans(object):
     return self._splits
   @property
   def len2split_idx(self):
-    return len2split_idx
+    return self._len2split_idx
   
 #***************************************************************
 if __name__ == '__main__':

@@ -212,17 +212,17 @@ class Vocab(Configurable):
       initializer = tf.random_normal_initializer()
     else:
       initializer = tf.zeros_initializer
-      self.pretrained_embeddings = np.pad(self.pretrained_embeddings, ((self.START_IDX, 0), (0, max(0, self.embed_size - self.pretrained_embeddings.shape[1]))), 'constant')
-      self.pretrained_embeddings = self.pretrained_embeddings[:,:self.embed_size]
+      self.pretrained_embeddings = np.pad(self.pretrained_embeddings, ((self.START_IDX, 0), (0, max(0, self.embedding_size - self.pretrained_embeddings.shape[1]))), 'constant')
+      self.pretrained_embeddings = self.pretrained_embeddings[:,:self.embedding_size]
     
     with tf.device('/cpu:0'):
       with tf.variable_scope(self.name):
 
         if self.split_embeddings:
-          self.dep_trainable_embeddings = tanh_const * tf.get_variable('Trainable_dep', shape=(len(self._str2idx), self.embed_size), initializer=initializer)
-          self.srl_trainable_embeddings = tanh_const * tf.get_variable('Trainable_srl', shape=(len(self._str2idx), self.embed_size), initializer=initializer)
+          self.dep_trainable_embeddings = tanh_const * tf.get_variable('Trainable_dep', shape=(len(self._str2idx), self.embedding_size), initializer=initializer)
+          self.srl_trainable_embeddings = tanh_const * tf.get_variable('Trainable_srl', shape=(len(self._str2idx), self.embedding_size), initializer=initializer)
         else:
-          self.trainable_embeddings = tanh_const * tf.get_variable('Trainable', shape=(len(self._str2idx), self.embed_size), initializer=initializer)
+          self.trainable_embeddings = tanh_const * tf.get_variable('Trainable', shape=(len(self._str2idx), self.embedding_size), initializer=initializer)
         if self.pretrained_embeddings is not None:
           self.pretrained_embeddings /= np.std(self.pretrained_embeddings)
           self.pretrained_embeddings = tf.Variable(self.pretrained_embeddings, trainable=False, name='Pretrained')
@@ -339,8 +339,8 @@ class Vocab(Configurable):
     
     embed_input = tf.matmul(tf.reshape(inputs, [-1, input_size]),
                             trainable_embeddings)
-    embed_input = tf.reshape(embed_input, tf.pack([batch_size, bucket_size, self.embed_size]))
-    embed_input.set_shape([tf.Dimension(None), tf.Dimension(None), tf.Dimension(self.embed_size)]) 
+    embed_input = tf.reshape(embed_input, tf.pack([batch_size, bucket_size, self.embedding_size]))
+    embed_input.set_shape([tf.Dimension(None), tf.Dimension(None), tf.Dimension(self.embedding_size)])
     if moving_params is None:
       tf.add_to_collection('Weights', embed_input)
     return embed_input
@@ -402,5 +402,12 @@ class Vocab(Configurable):
   
   def __iter__(self):
     return (key for key in self._str2idx)
+
+  @property
+  def embedding_size(self):
+    if self.name == "Words":
+      return self.embed_size
+    else:
+      return self.normal_size
   
   

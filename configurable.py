@@ -224,7 +224,7 @@ class Configurable(object):
   argparser.add_argument('--forget_bias')
   @property
   def context_from_lstm(self):
-    return self.__config.getboolean('Layers', 'context_from_lstm')
+    return self._config.getboolean('Layers', 'context_from_lstm')
   argparser.add_argument('--context_from_lstm')
   
   #=============================================================
@@ -233,6 +233,10 @@ class Configurable(object):
   def embed_size(self):
     return self._config.getint('Sizes', 'embed_size')
   argparser.add_argument('--embed_size')
+  @property
+  def normal_size(self):
+    return self._config.getint('Sizes', 'normal_size')
+  argparser.add_argument('--normal_size')
   @property
   def combine_size(self):
     return self._config.getint('Sizes', 'combine_size')
