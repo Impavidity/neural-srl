@@ -220,7 +220,7 @@ class ParserNetwork(Configurable):
       mb_inputs = feed_dict[dataset.inputs]
       mb_targets = feed_dict[dataset.targets]
       mb_probs, hidden_repre = sess.run(op, feed_dict=feed_dict)
-      embedding_output(self.save_dir, filename, sents, hidden_repre)
+      #embedding_output(self.save_dir, filename, sents, hidden_repre)
       # Here the prediction is two column, one is head, the other one is relation
       all_predictions[-1].extend(self.model.validate(mb_inputs, mb_targets, mb_probs))
       all_sents[-1].extend(sents)
