@@ -136,17 +136,20 @@ if __name__ == '__main__':
           print("Parser UAS : %5.2f LAS : %5.2f" % (uas, las))
       if network.model_type == "MultiTask":
         if args.test and not args.validate and not args.ood:
-          p, r, f, uas, las = network.test(sess, validate=False, ood=False)
+          uas, las, p, r, f, lmp, lmr, macro = network.test(sess, validate=False, ood=False) # uas, las, p, r, f, lmp, lmr, macro
           print("## TESTING ##")
           print("Srler P : %5.2f R : %5.2f F : %5.2f" % (p, r, f))
           print("Parser UAS : %5.2f LAS : %5.2f" % (uas, las))
+          print("lmp : %5.2f lmr : %5.2f macro : %5.2f " % (lmp, lmr, macro))
         elif not args.test and not args.ood and args.validate:
-          p, r, f, uas, las = network.test(sess, validate=True, ood=False)
+          uas, las, p, r, f, lmp, lmr, macro = network.test(sess, validate=True, ood=False)
           print("## VALIDATION ##")
           print("Srler P : %5.2f R : %5.2f F : %5.2f" % (p, r, f))
           print("Parser UAS : %5.2f LAS : %5.2f" % (uas, las))
+          print("lmp : %5.2f lmr : %5.2f macro : %5.2f " % (lmp, lmr, macro))
         elif not args.test and not args.validate and args.ood:
-          p, r, f, uas, las = network.test(sess, validate=False, ood=True)
+          uas, las, p, r, f, lmp, lmr, macro = network.test(sess, validate=False, ood=True)
           print("## OOD ##")
           print("Srler P : %5.2f R : %5.2f F : %5.2f" % (p, r, f))
           print("Parser UAS : %5.2f LAS : %5.2f" % (uas, las))
+          print("lmp : %5.2f lmr : %5.2f macro : %5.2f " % (lmp, lmr, macro))
